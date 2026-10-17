@@ -14,7 +14,9 @@ finished Bambu Studio projects.
 ## Print it
 
 1. Open `out/plates/project_whole_bench.3mf` in Bambu Studio: every PLA and PETG part on eight
-   plates, about 19 hours. Slot 1 is PETG HF, slot 2 is PLA Basic.
+   plates, about 19 hours. Slot 1 is PETG HF, slot 2 is PLA Basic. Plates 7 and 8 are
+   **optional add-ons**: the mic crown (for a reSpeaker XVF3800 above the screen) and the DIN
+   tilt adapter (for DIN devices too tall for the raked rail; it takes the rail bin's place).
 2. Print `out/plates/07f_tpu_feet_all.3mf` for the 18 TPU feet (37 min).
 3. Print plate by plate: click a plate, Slice plate, Print plate. Map the filaments in the
    Print dialog; pressing Sync info resets the project's filament settings.

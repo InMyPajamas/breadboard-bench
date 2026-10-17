@@ -82,6 +82,14 @@ PARTS = {
     "asm_lockknob1": ("Twist lock wing", "modules", "#b4501f"),
     # the mic crown (plate 10c), PETG, slid down the backplate's socket
     "asm_crown":     ("Mic crown", "modules", "#b4501f"),
+    # Optional add-ons (out/frame_addons), behind their own switch: the DIN
+    # tilt adapter swaps in for the rail bin at the rail's right end.
+    "asm_tilt_base":     ("DIN tilt adapter base", "addons", "#d08a2e"),
+    "asm_tilt_arm":      ("DIN tilt adapter arm", "addons", "#d08a2e"),
+    "asm_tilt_knob":     ("DIN tilt adapter knob", "addons", "#d08a2e"),
+    "asm_tilt_lock":     ("Tilt adapter twist lock", "addons", "#d08a2e"),
+    "asm_tilt_lockknob": ("Tilt adapter lock wing", "addons", "#d08a2e"),
+    "prop_dinbox":       ("DIN device, 113 x 66 (UniFi hub size)", "addons", "#5d6670"),
     "asm_dspine":   ("Display mount spine (v1)", "modules", "#b4501f"),
     "asm_dupright0": ("Display mount upright (v1)", "modules", "#b4501f"),
     "asm_dupright1": ("Display mount upright (v1)", "modules", "#b4501f"),
@@ -150,9 +158,9 @@ CONSOLE_PARTS = {
 # Structure wants PLA's stiffness, the snap-fit clips want PETG's strain
 # budget, and the feet want TPU's grip.
 MATERIAL = {"structure": "PLA", "rail": "PLA", "modules": "PETG",
-            "tpu": "TPU", "hardware": "Steel", "fitted": "", }
+            "tpu": "TPU", "hardware": "Steel", "fitted": "", "addons": "PETG"}
 # Parts whose filament is not their group's.
-MAT_OF = {"asm_backplate": "PLA"}
+MAT_OF = {"asm_backplate": "PLA", "prop_dinbox": ""}
 
 # The vendor STEP's screen body is 540k triangles -- 13 MB of viewer for a
 # part you look at rather than measure. Anything over this is lightened.
@@ -244,6 +252,8 @@ def explode_dir(name, group, c):
         return [0.0, 88.0 + 18 * 0.60, 8.0 + 18 * 0.80]
     if name.startswith("prop_cp7"):
         return [0.0, 88.0 + 46 * 0.60, 8.0 + 46 * 0.80]
+    if group == "addons":                     # off the rail like the modules
+        return [c[0] * 0.18, 88.0, 8.0]
     if name == "asm_crown":                   # lifts up its socket, off the top
         return [0.0, 88.0 + 30 * 0.80, 8.0 - 30 * 0.60]
     if name.startswith("prop_mic"):
@@ -281,12 +291,19 @@ def main():
     have = {fn[:-4] for fn in os.listdir(src) if fn.endswith(".stl")}
     meshes = {n: trimesh.load(os.path.join(src, n + ".stl"))
               for n in manifest if n in have}
+    if VARIANT == "frame":
+        extra = os.path.join(OUT, "frame_addons")
+        for n in manifest:
+            path = os.path.join(extra, n + ".stl")
+            if n not in meshes and os.path.exists(path):
+                meshes[n] = trimesh.load(path)
     for n, m in list(meshes.items()):
         if len(m.faces) > MAX_TRIS:
             meshes[n] = lighten(m)
             print(f"  {n}: {len(m.faces)} -> {len(meshes[n].faces)} triangles")
 
-    allv = np.vstack([m.vertices for m in meshes.values()])
+    # the envelope is the bench as it ships, without the optional add-ons
+    allv = np.vstack([m.vertices for n, m in meshes.items() if manifest[n][1] != "addons"])
     lo, hi = allv.min(axis=0), allv.max(axis=0)
     centre = (lo + hi) / 2
 
@@ -312,6 +329,8 @@ def main():
             "n": len(v),
             "p": base64.b64encode(q.tobytes()).decode("ascii"),
         })
+        if name == "asm_railbin" and any(manifest[k][1] == "addons" for k in meshes):
+            parts[-1]["swap"] = "addons"     # the tilt adapter takes its place
 
     blob = {"size": [round(x, 1) for x in (hi - lo)], "parts": parts}
     path = os.path.join(OUT, {"console": "viewer_data_console.json",

@@ -781,12 +781,12 @@ G-code. Weight and time are Studio's estimates for the whole plate.
 | 02j | 0 | 3 | 15% | no_brim | 10.82 g | 18m 29s | ok |
 | 02k | 0 | 3 | 15% | no_brim | 20.04 g | 32m 3s | ok |
 | 02m | 0 | 3 | 15% | no_brim | 33.65 g | 1h 2m 39s | ok |
-| 03 | 0 | 3 | 15% | no_brim | 37.57 g | 1h 14m 6s | ok |
+| 03 | 0 | 3 | 15% | no_brim | 37.57 g | 1h 14m 1s | ok |
 | 04 | 0 | 4 | 25% | no_brim | 32.55 g | 52m 21s | ok |
 | 05 | 0 | 3 | 15% | no_brim | 15.09 g | 24m 47s | ok |
-| 06 | 0 | 5 | 25% | no_brim | 47.68 g | 1h 2m 55s | ok |
+| 06 | 0 | 5 | 25% | no_brim | 47.68 g | 1h 2m 54s | ok |
 | 04x | 0 | 3 | 15% | no_brim | 30.05 g | 49m 16s | ok |
-| 06x | 0 | 5 | 25% | no_brim | 94.97 g | 2h 19m 0s | ok |
+| 06x | 0 | 5 | 25% | no_brim | 94.97 g | 2h 18m 59s | ok |
 | 07 | 0 | 3 | 15% | no_brim | 53.43 g | 4h 45m 38s | ok |
 | 07b | 0 | 3 | 100% | no_brim | 7.23 g | 28m 55s | ok |
 | 07c | 0 | 3 | 100% | no_brim | 2.12 g | 8m 27s | ok |

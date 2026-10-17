@@ -510,7 +510,7 @@ canvas:active { cursor: grabbing; }
     gl.bufferData(gl.ARRAY_BUFFER, unb64(p.p), gl.STATIC_DRAW);
     return {
       buf: buf, n: p.n, min: p.min, span: p.span, ex: p.ex,
-      row: p.row, name: p.name, group: p.group, mat: p.mat,
+      row: p.row, name: p.name, group: p.group, mat: p.mat, swap: p.swap,
       /* Part colours are authored as sRGB hex but the shader lights them as
          linear radiance and gamma-encodes at the end. Feeding sRGB straight in
          applies the curve twice and every colour comes out chalky -- burnt
@@ -636,15 +636,20 @@ canvas:active { cursor: grabbing; }
     { id: "modules",   label: "Clip-on modules", colour: "#b4501f" },
     { id: "tpu",       label: "TPU inserts", colour: "#4e565e" },
     { id: "hardware",  label: "M3 screws", colour: "#9aa2ab" },
-    { id: "fitted",    label: "Boards & screens", colour: "#1e3f8f" }
-  ];
+    { id: "fitted",    label: "Boards & screens", colour: "#1e3f8f" },
+    { id: "addons",    label: "Optional: DIN tilt adapter", colour: "#d08a2e" }
+  ].filter(function (g) {
+    return DATA.parts.some(function (p) { return p.group === g.id; });
+  });
+  // Optional add-ons start hidden; showing them swaps out what they replace
+  // (the tilt adapter takes the rail bin's place at the rail's right end).
   var shown = { structure: true, rail: true, modules: true, tpu: true,
-                hardware: true, fitted: true };
+                hardware: true, fitted: true, addons: false };
   // Hover is the transient highlight; pinned survives, so the schedule still
   // answers "which one is the rear tie rod?" on a touchscreen and by keyboard.
   var hover = null, pinned = null;
 
-  function visible(p) { return shown[p.group]; }
+  function visible(p) { return shown[p.group] && !(p.swap && shown[p.swap]); }
 
   /* ---- lighting and theme ---------------------------------------------- */
   /* The model is lit identically in both themes. Tying its exposure to the
@@ -884,12 +889,15 @@ canvas:active { cursor: grabbing; }
     var lab = document.createElement("label");
     var cb = document.createElement("input");
     cb.type = "checkbox";
-    cb.checked = true;
+    cb.checked = shown[g.id];
     cb.addEventListener("change", function () {
       shown[g.id] = cb.checked;
       if (!userZoomed) reframe();
       document.querySelectorAll("tr[data-group='" + g.id + "']").forEach(function (tr) {
         tr.classList.toggle("off", !cb.checked);
+      });
+      document.querySelectorAll("tr[data-swap='" + g.id + "']").forEach(function (tr) {
+        tr.classList.toggle("off", cb.checked);
       });
       dirty = true;
     });
@@ -907,7 +915,7 @@ canvas:active { cursor: grabbing; }
     var r = byRow[p.row];
     if (!r) {
       r = byRow[p.row] = { row: p.row, group: p.group, colour: p.colour,
-                           mat: p.mat, qty: 0 };
+                           mat: p.mat, qty: 0, swap: p.swap || "" };
       rows.push(r);
     }
     if (p.name) r.qty++;
@@ -917,6 +925,8 @@ canvas:active { cursor: grabbing; }
   rows.forEach(function (r) {
     var tr = document.createElement("tr");
     tr.dataset.group = r.group;
+    tr.dataset.swap = r.swap;
+    tr.classList.toggle("off", !shown[r.group] || !!(r.swap && shown[r.swap]));
     tr.innerHTML =
       '<td><span class="pname"><span class="swatch"></span><span></span></span></td>' +
       '<td class="qty"></td><td class="mat"></td>';

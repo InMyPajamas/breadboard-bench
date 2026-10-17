@@ -43,7 +43,7 @@ from bench import (box, din_clip, din_rail, board_plate,  # noqa: E402
                    screen_bezel, rail_bin, rim_cutter, safe_chamfer,
                    safe_fillet, display_mount_placed, display_post,
                    display_backplate, display_lock, display_lock_knob,
-                   mic_crown)
+                   mic_crown, din_tilt_base, din_tilt_arm, din_tilt_knob)
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "out")
 
@@ -1751,6 +1751,35 @@ def props():
     return out
 
 
+# Optional add-ons: not on the default bench, written to out/frame_addons so
+# the gates and the catalogue's envelope never count them, and the 3D viewer
+# can offer them behind a switch (user, 2026-10-17: "Did we add the optional
+# parts that let you add tilt to the din rail").
+ADDON_X = 262.0            # the rail's right end, where the fit sweep cleared it
+ADDON_ANGLE = -DTA_FLAT    # the arm at its flat stop
+ADDON_DEVICE = (66.0, 113.0, 27.6)   # UniFi UA-Hub-Door-Mini: along the rail, across, deep
+
+
+def addons():
+    """The DIN tilt adapter at the rail's right end, in place of the rail bin,
+    at its flat stop with a UniFi-sized device clipped to its stub."""
+    yh, zh = DTA_HINGE
+    w, l, d = ADDON_DEVICE
+    zc = zh + DTA_KNUCKLE_R + 0.3 + DTA_CARRIER_T          # the stub's mounting face
+    dev = Pos(DTA_ARM_X[0] + DTA_STUB_L / 2, yh, zc + RAIL_TOP_Z) * Box(
+        w, l, d, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    dev = safe_fillet(dev, dev.edges().filter_by(Axis.Z), 3.0)
+    swing = lambda shape: Pos(0, yh, zh) * Rot(ADDON_ANGLE, 0, 0) * Pos(0, -yh, -zh) * shape  # noqa: E731
+    return {
+        "asm_tilt_base": to_post(din_tilt_base(), x_centre=ADDON_X),
+        "asm_tilt_arm": to_post(din_tilt_arm(ADDON_ANGLE), x_centre=ADDON_X),
+        "asm_tilt_knob": to_post(din_tilt_knob(), x_centre=ADDON_X),
+        "asm_tilt_lock": to_post(display_lock(), x_centre=ADDON_X),
+        "asm_tilt_lockknob": to_post(display_lock_knob(), x_centre=ADDON_X),
+        "prop_dinbox": to_post(swing(dev), x_centre=ADDON_X),
+    }
+
+
 if __name__ == "__main__":
     print("building skeletal frame ...")
     parts, placed = build()
@@ -1760,7 +1789,7 @@ if __name__ == "__main__":
     # viewer -- happily reads it as current. That is exactly how a right end
     # frame from three hours earlier passed every gate while the real one was
     # never written at all.
-    for d in ("stl_frame", "frame"):
+    for d in ("stl_frame", "frame", "frame_addons"):
         p = os.path.join(OUT, d)
         os.makedirs(p, exist_ok=True)
         for f in os.listdir(p):
@@ -1810,6 +1839,10 @@ if __name__ == "__main__":
             export_stl(p, path, tolerance=0.02, angular_tolerance=0.1)
     print(f"    {'FRAME TOTAL':18s}     {total:6.1f} cm3 "
           f"(console base alone was 308)")
+    for name, p in addons().items():
+        export_stl(p, os.path.join(OUT, "frame_addons", f"{name}.stl"),
+                   tolerance=0.02, angular_tolerance=0.1)
+    print("    optional add-ons -> out/frame_addons")
 
 
 

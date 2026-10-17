@@ -1155,15 +1155,19 @@ def shelf_pack(sizes, gap, edge=EDGE):
 
 # --- 3mf writing ------------------------------------------------------------
 
-def model_xml(meshes):
+def model_xml(meshes, meta=None):
+    """meta: extra (name, value) model metadata -- Studio's Project tab reads
+    Title, Designer, Description and the rest from here."""
+    from xml.sax.saxutils import escape
     o = ['<?xml version="1.0" encoding="UTF-8"?>',
          '<model unit="millimeter" xml:lang="en-US" '
          'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
          'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">',
          ' <metadata name="Application">BambuStudio-02.07.01.62</metadata>',
          ' <metadata name="BambuStudio:3mfVersion">1</metadata>',
-         f' <metadata name="CreationDate">{date.today().isoformat()}</metadata>',
-         ' <resources>']
+         f' <metadata name="CreationDate">{date.today().isoformat()}</metadata>']
+    o += [f' <metadata name="{k}">{escape(v)}</metadata>' for k, v in (meta or [])]
+    o += [' <resources>']
     for i, (_, m) in enumerate(meshes, start=1):
         o.append(f'  <object id="{i}" type="model">')
         o.append('   <mesh>')
@@ -1422,11 +1426,18 @@ SLOT = {"PETG": 1, "PLA": 2}            # the template's filament order
 
 PROJECTS = [
     dict(slug="screen_mic_din", title="Screen case, mic crown, DIN tilt adapter",
-         plates=["10d", "10c", "11t"]),
+         about="The 7-inch screen's backplate, the mic crown that sits above it, and the"
+               " DIN tilt adapter for devices too tall for the raked rail.",
+         plates=["10d", "10c", "11t"], optional=["10c", "11t"]),
     # The whole bench, every PLA and PETG part (user, 2026-10-17: "the entire
     # breadboard bench"). The gauges stay out; 09c's posts are superseded by
     # 10p's, so its rail bin rides with them. TPU feet: plate 07f, own file.
     dict(slug="whole_bench", title="The whole Breadboard Bench, PLA + PETG",
+         about="A 3D-printed electronics workbench: two breadboards in a cradle, a DIN rail"
+               " across the back for clip-on modules, a 7-inch touchscreen on posts, and an"
+               " optional mic array above it. Every part is Python code (build123d), checked"
+               " by scripts before it prints, and written out as this project.",
+         optional=["10c", "11t"], extra_file="07f_tpu_feet_all.3mf (the 18 TPU feet)",
          plates=["06x", "07", "08", "09",
                  dict(n="10b", slug="posts_locks_rail_bin", stage=10, mat="PETG", gap=12.0,
                       title="Display posts, twist locks and the rail bin",
@@ -1486,6 +1497,92 @@ def plate_grid(i, count):
     return ((i % cols) * BED[0] * 1.2, -(i // cols) * BED[1] * 1.2)
 
 
+REPO = "https://github.com/InMyPajamas/breadboard-bench"
+HUB = "https://www.redding.digital/bench-hub.html"
+PICTURES = ["hero", "mic_crown", "din_tilt", "whole_bench_project"]   # docs/images/*.webp
+
+
+def hardware_lines():
+    """The bought parts, off the catalogue (it counts them on the assembly)."""
+    try:
+        hw = json.load(open(os.path.join(OUT, "catalog.json")))["hardware"]
+    except Exception:
+        return []
+    lines = [f"{h['qty']} x {h['name']}" for h in hw]
+    lines.append("1 x M3 x 20 socket head cap screw and 1 M3 hex nut (DIN tilt adapter hinge)")
+    lines.append("Optional: Seeed reSpeaker XVF3800 USB 4-mic array (for the mic crown)")
+    return lines
+
+
+def project_info(proj, plates):
+    """What Studio's Project tab shows: model metadata, and the Auxiliaries
+    folder's pictures, bill of materials and guide. Returns (meta, files)."""
+    import html as H
+    opt = set(proj.get("optional", []))
+    rows = "".join(f"<li>Plate {k}: {H.escape(p['title'])} ({p['mat']})"
+                   f"{' <strong>optional</strong>' if p['n'] in opt else ''}</li>"
+                   for k, p in enumerate(plates, start=1))
+    hw = hardware_lines()
+    desc = (f"<h3>{H.escape(proj['title'])}</h3><p>{H.escape(proj.get('about', ''))}</p>"
+            f"<h3>Plates</h3><ol>{rows}</ol>"
+            "<h3>Filaments</h3><p>Slot 1 is PETG HF, slot 2 is PLA Basic. Map them in the"
+            " Print dialog; pressing Sync info resets this project's filament settings.</p>")
+    if opt:
+        desc += ("<h3>Optional add-ons</h3><p>Plates marked optional are extras: the mic crown"
+                 " holds a reSpeaker XVF3800 above the screen, and the DIN tilt adapter carries"
+                 " DIN devices too tall for the raked rail (it swaps in for the rail bin at the"
+                 " rail's right end). Skip them if you don't need them.</p>")
+    if proj.get("extra_file"):
+        desc += f"<h3>Also print</h3><p>{H.escape(proj['extra_file'])}</p>"
+    if hw:
+        desc += "<h3>Hardware</h3><ul>" + "".join(f"<li>{H.escape(x)}</li>" for x in hw) + "</ul>"
+    desc += (f'<p>Code and every file: <a href="{REPO}">{REPO}</a><br>'
+             f'Build hub with a 3D viewer: <a href="{HUB}">{HUB}</a></p>')
+    meta = [("Title", f"Breadboard Bench: {proj['title']}"), ("Designer", "InMyPajamas"),
+            ("Description", H.escape(desc)), ("Origin", "original"),
+            ("ProfileTitle", "H2S 0.4, PETG HF + PLA Basic, per-plate settings"),
+            ("ProfileDescription", "Generated by cad/plates.py; each plate carries its own"
+                                   " layer height, walls, infill and pauses."),
+            ("ModificationDate", date.today().isoformat())]
+    files = {}
+    img = os.path.join(HERE, "..", "docs", "images")
+    for n in PICTURES:
+        src = os.path.join(img, n + ".webp")
+        if os.path.exists(src):
+            files[f"Auxiliaries/Model Pictures/{n}.webp"] = open(src, "rb").read()
+    hero = os.path.join(img, "hero.webp")
+    if os.path.exists(hero):
+        import io
+        from PIL import Image
+        im = Image.open(hero).convert("RGB")
+        for name, w in (("thumbnail_3mf", 512), ("thumbnail_middle", 1024), ("thumbnail_small", 256)):
+            t = im.copy()
+            t.thumbnail((w, w))
+            b = io.BytesIO()
+            t.save(b, "PNG")
+            files[f"Auxiliaries/.thumbnails/{name}.png"] = b.getvalue()
+    if hw:
+        files["Auxiliaries/Bill of Materials/hardware.txt"] = (
+            "Breadboard Bench -- hardware\n\n" + "\n".join(hw) + "\n").encode()
+    guide = os.path.join(DEST, "PLATES.md")
+    if os.path.exists(guide):
+        files["Auxiliaries/Assembly Guide/plates_and_hand_steps.txt"] = open(guide, "rb").read()
+    return meta, files
+
+
+PROJECT_RELS = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+ <Relationship Target="/Auxiliaries/.thumbnails/thumbnail_3mf.png" Id="rel-2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"/>
+ <Relationship Target="/Auxiliaries/.thumbnails/thumbnail_middle.png" Id="rel-4" Type="http://schemas.bambulab.com/package/2021/cover-thumbnail-middle"/>
+ <Relationship Target="/Auxiliaries/.thumbnails/thumbnail_small.png" Id="rel-5" Type="http://schemas.bambulab.com/package/2021/cover-thumbnail-small"/>
+</Relationships>
+"""
+PROJECT_TYPES = CONTENT_TYPES.replace(
+    "</Types>", ' <Default Extension="webp" ContentType="image/webp"/>\n'
+                ' <Default Extension="txt" ContentType="text/plain"/>\n</Types>')
+
+
 def build_project(proj):
     by_n = {p["n"]: p for p in PLATES}
     plates = [p if isinstance(p, dict) else by_n[p] for p in proj["plates"]]
@@ -1525,14 +1622,21 @@ def build_project(proj):
                     raise SystemExit(f"project {proj['slug']}, plate {plate['n']}: pause "
                                      f"at {pz} is not a layer top at {lh}")
             pauses.append((k + 1, sorted(zs)))
-        groups.append((f"{plate['n']} {plate['title']}", ids))
+        # Studio rejects a plate name holding any of <>:/\|?* with an error
+        # dialog on open (2026-10-17: "Optional: ..." did), so strip them
+        tag = " (optional)" if plate["n"] in proj.get("optional", []) else ""
+        pname = re.sub(r'[<>:/\\|?*"]', "", f"{plate['n']} {plate['title']}{tag}")
+        groups.append((pname, ids))
         cards.append((plate, rows, used, sum(m.volume for _, m in ms) / 1000.0, keep, dropped))
 
     path = os.path.join(DEST, f"project_{proj['slug']}.3mf")
+    meta, aux = project_info(proj, plates)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
-        z.writestr("[Content_Types].xml", CONTENT_TYPES)
-        z.writestr("_rels/.rels", RELS)
-        z.writestr("3D/3dmodel.model", model_xml(meshes))
+        z.writestr("[Content_Types].xml", PROJECT_TYPES)
+        z.writestr("_rels/.rels", PROJECT_RELS if any(".thumbnails" in k for k in aux) else RELS)
+        z.writestr("3D/3dmodel.model", model_xml(meshes, meta))
+        for name, data in aux.items():
+            z.writestr(name, data)
         z.writestr("Metadata/model_settings.config",
                    settings_xml(meshes, overrides, groups))
         z.writestr("Metadata/slice_info.config", SLICE_INFO)
