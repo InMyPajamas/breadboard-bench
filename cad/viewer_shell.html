@@ -1,0 +1,917 @@
+<title>Breadboard Bench — assembly viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root {
+  /* Palette taken off the object: bone is the frame's PLA, graphite is the
+     DIN rail, orange is the clip-on modules. Light neutrals lean warm toward
+     the bone, dark neutrals lean cool so the warm model separates from them. */
+  --ground:  #e9e6df;
+  --panel:   #f5f3ee;
+  --sink:    #dfdbd2;
+  --ink:     #22262b;
+  --dim:     #63666d;
+  --faint:   #8d8f96;
+  --rule:    #d0cbc0;
+  --rule-2:  #bdb7aa;
+  --steel:   #2f6183;
+  --steel-w: #2f618314;
+  --accent:  #b8531f;
+  --stage-a: #d3cec3;
+  --stage-b: #ada698;
+  --shade:   #22262b;
+  --shade-a: 0.22;
+  --sans: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui,
+          -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", ui-monospace, "SF Mono", Consolas,
+          "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:  #131619;
+    --panel:   #1a1e22;
+    --sink:    #0e1114;
+    --ink:     #e5e3de;
+    --dim:     #9298a1;
+    --faint:   #6b717a;
+    --rule:    #2a3036;
+    --rule-2:  #394047;
+    --steel:   #83b3d2;
+    --steel-w: #83b3d21f;
+    --accent:  #e07a42;
+    --stage-a: #202429;
+    --stage-b: #0c0f12;
+    --shade:   #000000;
+    --shade-a: 0.5;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:  #131619;
+  --panel:   #1a1e22;
+  --sink:    #0e1114;
+  --ink:     #e5e3de;
+  --dim:     #9298a1;
+  --faint:   #6b717a;
+  --rule:    #2a3036;
+  --rule-2:  #394047;
+  --steel:   #83b3d2;
+  --steel-w: #83b3d21f;
+  --accent:  #e07a42;
+  --stage-a: #202429;
+  --stage-b: #0c0f12;
+  --shade:   #000000;
+  --shade-a: 0.5;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+
+.app {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  height: 100dvh;
+}
+
+/* ---- left rail: the title block, stood on end ------------------------- */
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.rail > * { border-bottom: 1px solid var(--rule); }
+.rail > :last-child { border-bottom: 0; }
+
+.ident { padding: 20px 20px 16px; display: grid; gap: 3px; }
+.ident h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+.ident p { margin: 0; color: var(--dim); font-size: 12.5px; }
+.ident .rev {
+  margin-top: 7px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.block { padding: 15px 20px 17px; display: grid; gap: 10px; }
+.lbl {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.views { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.views button {
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 0;
+  color: var(--dim);
+  background: var(--sink);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.views button:hover { color: var(--ink); }
+.views button[aria-pressed="true"] {
+  color: var(--steel);
+  background: var(--steel-w);
+  border-color: var(--steel);
+}
+
+.slider { display: flex; align-items: center; gap: 11px; }
+.slider input { flex: 1; min-width: 0; accent-color: var(--steel); margin: 0; }
+.slider output {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+  min-width: 3.4em;
+  text-align: right;
+}
+
+.groups { display: grid; gap: 1px; }
+.groups label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.groups input { accent-color: var(--steel); margin: 0; flex: none; }
+.groups .swatch {
+  width: 9px; height: 9px; border-radius: 2px; flex: none;
+  border: 1px solid var(--rule-2);
+}
+
+/* ---- parts schedule --------------------------------------------------- */
+.schedule { padding: 15px 0 17px; display: grid; gap: 8px; }
+.schedule .lbl { padding: 0 20px; }
+.sched-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+thead th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--faint);
+  text-align: left;
+  padding: 0 0 5px;
+  border-bottom: 1px solid var(--rule);
+}
+thead th:first-child { padding-left: 20px; }
+thead th:last-child  { padding-right: 20px; text-align: right; }
+tbody td { padding: 5px 0; border-bottom: 1px solid var(--rule); }
+tbody td:first-child { padding-left: 20px; }
+tbody td:last-child  { padding-right: 20px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td, tbody tr:focus-visible td { background: var(--steel-w); }
+tbody tr.on td { background: var(--steel-w); color: var(--steel); }
+tbody tr.on td:first-child { box-shadow: inset 3px 0 0 var(--steel); }
+tbody tr.on .qty, tbody tr.on .mat { color: var(--steel); }
+tbody tr.off { opacity: 0.38; }
+tbody tr:focus-visible { outline: 2px solid var(--steel); outline-offset: -2px; }
+.pname { display: flex; align-items: center; gap: 9px; }
+.pname .swatch {
+  width: 9px; height: 9px; border-radius: 2px; flex: none;
+  border: 1px solid var(--rule-2);
+}
+.qty, .mat {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.qty { text-align: right; padding-right: 12px !important; }
+.mat { text-align: right; }
+.note {
+  padding: 9px 20px 0;
+  color: var(--faint);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ---- stage ------------------------------------------------------------ */
+.stage {
+  position: relative;
+  min-width: 0;
+  background: radial-gradient(120% 90% at 50% 8%, var(--stage-a), var(--stage-b));
+}
+canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+canvas:active { cursor: grabbing; }
+
+.stamp {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 10px 13px;
+  display: grid;
+  gap: 2px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+.stamp b { color: var(--ink); font-weight: 500; }
+.stamp .k { color: var(--faint); }
+
+.hint {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  color: var(--faint);
+  font-size: 11.5px;
+  pointer-events: none;
+}
+.fail {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 32px;
+  text-align: center;
+  color: var(--dim);
+  max-width: 34em;
+  margin: 0 auto;
+}
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 58dvh minmax(0, 1fr); }
+  .stage { order: -1; }
+  .rail { border-right: 0; border-top: 1px solid var(--rule); }
+  .hint { display: none; }
+}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="ident">
+      <h1>Breadboard Bench</h1>
+      <p>Skeletal frame with a printed DIN rail</p>
+      <div class="rev">362 &times; 190 &times; 154 MM &middot; 18 RIGID + 18 TPU</div>
+    </div>
+
+    <div class="block">
+      <div class="lbl">View</div>
+      <div class="views" id="views"></div>
+    </div>
+
+    <div class="block">
+      <div class="lbl">Exploded</div>
+      <div class="slider">
+        <input id="explode" type="range" min="0" max="100" value="0" step="1"
+               aria-label="Explode the assembly">
+        <output id="explodeOut" for="explode">seated</output>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="lbl">Show</div>
+      <div class="groups" id="groups"></div>
+    </div>
+
+    <div class="schedule">
+      <div class="lbl">Parts</div>
+      <div class="sched-scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Filament</th></tr>
+          </thead>
+          <tbody id="sched"></tbody>
+        </table>
+      </div>
+      <p class="note">
+        Bought, not printed: fourteen M3&nbsp;&times;&nbsp;12 socket caps (frames and rail), the
+        N52 magnets, eight 3&nbsp;&times;&nbsp;1 O-rings under the rail, and for the screen
+        4&nbsp;&times;&nbsp;M3&nbsp;&times;&nbsp;8 and 4&nbsp;&times;&nbsp;M3&nbsp;&times;&nbsp;16 caps with 8 M3 nuts (the twist locks and the mic crown snap, no screws). Filament column is
+        the reviewed recommendation &mdash; PLA for stiffness in the structure,
+        PETG for strain tolerance in the snap-fit clips, TPU for the feet and
+        gaskets.
+      </p>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <canvas id="gl" tabindex="0" aria-label="3D model of the bench. Arrow keys orbit, plus and minus zoom."></canvas>
+    <div class="stamp">
+      <div><span class="k">envelope  </span><b>362 &times; 190 &times; 154</b> mm</div>
+      <div><span class="k">filament  </span><b>347</b> cm&sup3; &rarr; <b>~320</b> g</div>
+      <div><span class="k">rail held </span><b>4</b> supports &middot; <b>8</b> screws</div>
+      <div><span class="k">tips at   </span><b>29</b> N loaded &middot; <b>39</b> N with a full tray</div>
+    </div>
+    <p class="hint">Drag to orbit &middot; scroll to zoom &middot; shift-drag to pan &middot; tap a part to hold it lit</p>
+  </main>
+</div>
+
+<script id="mesh" type="application/json">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA = JSON.parse(document.getElementById("mesh").textContent);
+  var canvas = document.getElementById("gl");
+  var stage = canvas.parentNode;
+
+  /* Deliberately WebGL1 only. The shader needs fragment derivatives to
+     recover a face normal from the interpolated view position -- which is why
+     the payload ships no normals at all -- and on WebGL1 that is one
+     universally-supported extension and one shader. Asking for a WebGL2
+     context instead would mean maintaining a second ESSL 3.00 copy of every
+     shader, because a WebGL2 context does NOT hand derivatives to an ESSL 1.00
+     shader: it rejects the OES pragma as unsupported and then fails to resolve
+     dFdx. Thirty draw calls do not need WebGL2. */
+  var opts = { alpha: true, antialias: true, premultipliedAlpha: false,
+               depth: true, powerPreference: "high-performance" };
+  var gl = canvas.getContext("webgl", opts) ||
+           canvas.getContext("experimental-webgl", opts);
+  if (gl && !gl.getExtension("OES_standard_derivatives")) gl = null;
+  var pragma = "#extension GL_OES_standard_derivatives : enable\n";
+  if (!gl) {
+    stage.innerHTML = '<div class="fail"><p>This browser can’t run the ' +
+      '3D view — it needs WebGL with fragment derivatives.</p>' +
+      '<p>Try Chrome, Edge, Firefox or Safari with hardware acceleration ' +
+      'turned on.</p></div>';
+    return;
+  }
+
+  /* ---- shaders --------------------------------------------------------- */
+  var VS = [
+    "attribute vec3 aPos;",
+    "uniform mat4 uProj, uView;",
+    "uniform vec3 uMin, uSpan, uOffset;",
+    "varying vec3 vView;",
+    "void main() {",
+    "  vec3 p = uMin + aPos * uSpan + uOffset;",
+    "  vec4 v = uView * vec4(p, 1.0);",
+    "  vView = v.xyz;",
+    "  gl_Position = uProj * v;",
+    "}"
+  ].join("\n");
+
+  /* Lights live in view space, so the model stays evenly lit from every
+     angle -- the right call for something you orbit to inspect rather than
+     something you light for a photograph. */
+  var FS = pragma + [
+    "precision highp float;",
+    "varying vec3 vView;",
+    "uniform vec3 uColour, uSky, uGround;",
+    "void main() {",
+    "  vec3 n = normalize(cross(dFdx(vView), dFdy(vView)));",
+    "  if (n.z < 0.0) n = -n;",
+    "  vec3 eye = normalize(-vView);",
+    "  float key  = max(dot(n, normalize(vec3(-0.42, 0.72, 0.55))), 0.0);",
+    "  float fill = max(dot(n, normalize(vec3( 0.68, -0.2, 0.42))), 0.0);",
+    "  vec3 hemi = mix(uGround, uSky, n.y * 0.5 + 0.5);",
+    "  float rim = pow(1.0 - max(dot(n, eye), 0.0), 3.0);",
+    "  vec3 c = uColour * (hemi + key * 0.85 + fill * 0.18);",
+    "  c += uSky * rim * 0.30;",
+    "  c = c / (c + 0.62);",                     // gentle rolloff, no clipping
+    "  gl_FragColor = vec4(pow(c, vec3(0.4545)), 1.0);",
+    "}"
+  ].join("\n");
+
+  var SHADOW_VS = [
+    "attribute vec2 aXY;",
+    "uniform mat4 uProj, uView;",
+    "uniform float uY, uR;",
+    "varying float vR;",
+    "void main() {",
+    "  vR = length(aXY);",
+    "  gl_Position = uProj * uView * vec4(aXY.x * uR, uY, aXY.y * uR * 0.68, 1.0);",
+    "}"
+  ].join("\n");
+
+  var SHADOW_FS = [
+    "precision mediump float;",
+    "varying float vR;",
+    "uniform vec3 uCol;",
+    "uniform float uA;",
+    "void main() {",
+    "  gl_FragColor = vec4(uCol, uA * (1.0 - smoothstep(0.06, 1.0, vR)));",
+    "}"
+  ].join("\n");
+
+  function compile(src, type) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program(vs, fs, attrs) {
+    var p = gl.createProgram();
+    gl.attachShader(p, compile(vs, gl.VERTEX_SHADER));
+    gl.attachShader(p, compile(fs, gl.FRAGMENT_SHADER));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+      throw new Error(gl.getProgramInfoLog(p));
+    p.u = {};
+    var i, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (i = 0; i < n; i++) {
+      var nm = gl.getActiveUniform(p, i).name;
+      p.u[nm] = gl.getUniformLocation(p, nm);
+    }
+    p.a = {};
+    for (i = 0; i < attrs.length; i++) p.a[attrs[i]] = gl.getAttribLocation(p, attrs[i]);
+    return p;
+  }
+
+  var prog = program(VS, FS, ["aPos"]);
+  var shadowProg = program(SHADOW_VS, SHADOW_FS, ["aXY"]);
+
+  /* ---- geometry -------------------------------------------------------- */
+  function unb64(s) {
+    var bin = atob(s), n = bin.length, out = new Uint8Array(n);
+    for (var i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+    return new Uint16Array(out.buffer);
+  }
+
+  var parts = DATA.parts.map(function (p) {
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, unb64(p.p), gl.STATIC_DRAW);
+    return {
+      buf: buf, n: p.n, min: p.min, span: p.span, ex: p.ex,
+      row: p.row, name: p.name, group: p.group, mat: p.mat,
+      /* Part colours are authored as sRGB hex but the shader lights them as
+         linear radiance and gamma-encodes at the end. Feeding sRGB straight in
+         applies the curve twice and every colour comes out chalky -- burnt
+         orange lands as tan. Decode once, here. */
+      rgb: [Math.pow(parseInt(p.colour.slice(1, 3), 16) / 255, 2.2),
+            Math.pow(parseInt(p.colour.slice(3, 5), 16) / 255, 2.2),
+            Math.pow(parseInt(p.colour.slice(5, 7), 16) / 255, 2.2)],
+      colour: p.colour
+    };
+  });
+
+  var RIM = 72, disc = new Float32Array((RIM + 2) * 2);
+  for (var i = 0; i <= RIM; i++) {
+    var a = i / RIM * Math.PI * 2;
+    disc[(i + 1) * 2] = Math.cos(a);
+    disc[(i + 1) * 2 + 1] = Math.sin(a);
+  }
+  var discBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, discBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, disc, gl.STATIC_DRAW);
+
+  var SIZE = DATA.size;                       // x width, y height, z depth
+  var GROUND_Y = -SIZE[1] / 2;
+  var DISC_R = Math.max(SIZE[0], SIZE[2]) * 0.62;
+
+  /* ---- matrices -------------------------------------------------------- */
+  function perspective(fovy, aspect, near, far) {
+    var f = 1 / Math.tan(fovy / 2), d = near - far;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + near) / d, -1,
+      0, 0, 2 * far * near / d, 0]);
+  }
+  function lookAt(e, c, up) {
+    var z0 = e[0] - c[0], z1 = e[1] - c[1], z2 = e[2] - c[2];
+    var L = Math.hypot(z0, z1, z2) || 1; z0 /= L; z1 /= L; z2 /= L;
+    var x0 = up[1] * z2 - up[2] * z1,
+        x1 = up[2] * z0 - up[0] * z2,
+        x2 = up[0] * z1 - up[1] * z0;
+    L = Math.hypot(x0, x1, x2) || 1; x0 /= L; x1 /= L; x2 /= L;
+    var y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+    return new Float32Array([
+      x0, y0, z0, 0,
+      x1, y1, z1, 0,
+      x2, y2, z2, 0,
+      -(x0 * e[0] + x1 * e[1] + x2 * e[2]),
+      -(y0 * e[0] + y1 * e[1] + y2 * e[2]),
+      -(z0 * e[0] + z1 * e[1] + z2 * e[2]), 1]);
+  }
+
+  var FOV = 0.56;                              // ~32 degrees vertical
+  var cam = { th: 0.62, ph: 0.40, dist: 520, tx: 0, ty: 0, tz: 0 };
+  var want = { th: 0.62, ph: 0.40, dist: 520, tx: 0, ty: 0, tz: 0 };
+  var explode = 0, wantExplode = 0;
+  var userZoomed = false, dirty = true;
+  var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function basis(th, ph) {
+    var cp = Math.cos(ph), sp = Math.sin(ph);
+    var fwd = [-cp * Math.sin(th), -sp, -cp * Math.cos(th)];
+    var right = [Math.cos(th), 0, -Math.sin(th)];
+    var up = [right[1] * fwd[2] - right[2] * fwd[1],
+              right[2] * fwd[0] - right[0] * fwd[2],
+              right[0] * fwd[1] - right[1] * fwd[0]];
+    return { fwd: fwd, right: right, up: up };
+  }
+
+  /* Centre on, and fit to, the eight bounding-box corners of whatever is
+     currently shown. A bounding sphere would be one line shorter and much
+     worse: the bench is 300 wide and 72 tall, so the sphere that contains it
+     is 351 across and the camera would sit far enough back to frame a ball,
+     leaving the model small and adrift in the middle of the viewport. */
+  function reframe() {
+    var e = explodeExtent();
+    var c = [(e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2, (e[0][2] + e[1][2]) / 2];
+    var b = basis(want.th, want.ph);
+    var tanV = Math.tan(FOV / 2) / 1.12;                 // 1.12 = breathing room
+    var tanH = tanV * canvas.width / Math.max(canvas.height, 1);
+    var dist = 0;
+    for (var s = 0; s < 8; s++) {
+      var d = [(s & 1 ? e[1][0] : e[0][0]) - c[0],
+               (s & 2 ? e[1][1] : e[0][1]) - c[1],
+               (s & 4 ? e[1][2] : e[0][2]) - c[2]];
+      /* Each corner sits at its own depth, and under perspective a near
+         corner projects larger than a far one. Solving |d.right| <= tanH *
+         (D + d.fwd) per corner is what makes the fit exact. Comparing the
+         projected offsets alone -- as if every corner were at target depth --
+         under-shoots badly whenever you look along the object's long axis:
+         end-on to this 300 mm bench the near face is 150 mm closer and
+         projects about twice as big, so it burst straight out of frame. */
+      var df = d[0] * b.fwd[0] + d[1] * b.fwd[1] + d[2] * b.fwd[2];
+      var dr = Math.abs(d[0] * b.right[0] + d[1] * b.right[1] + d[2] * b.right[2]);
+      var du = Math.abs(d[0] * b.up[0] + d[1] * b.up[1] + d[2] * b.up[2]);
+      dist = Math.max(dist, dr / tanH - df, du / tanV - df);
+    }
+    want.tx = c[0]; want.ty = c[1]; want.tz = c[2];
+    want.dist = Math.max(dist, 40);
+    dirty = true;
+  }
+
+  /* Framed on where the parts are HEADED, not where they currently are, so the
+     camera pulls back in step with the explode instead of chasing it. */
+  function explodeExtent() {
+    var lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (!visible(p)) continue;
+      for (var k = 0; k < 3; k++) {
+        var o = p.ex[k] * wantExplode;
+        lo[k] = Math.min(lo[k], p.min[k] + o);
+        hi[k] = Math.max(hi[k], p.min[k] + p.span[k] + o);
+      }
+    }
+    if (lo[0] > hi[0]) return [[-1, -1, -1], [1, 1, 1]];
+    return [lo, hi];
+  }
+
+  /* ---- state ----------------------------------------------------------- */
+  var GROUPS = [
+    { id: "structure", label: "Frame", colour: "#c9c3b6" },
+    { id: "rail",      label: "DIN rail", colour: "#2e3338" },
+    { id: "modules",   label: "Clip-on modules", colour: "#b4501f" },
+    { id: "tpu",       label: "TPU inserts", colour: "#4e565e" },
+    { id: "hardware",  label: "M3 screws", colour: "#9aa2ab" },
+    { id: "fitted",    label: "Boards & screens", colour: "#1e3f8f" }
+  ];
+  var shown = { structure: true, rail: true, modules: true, tpu: true,
+                hardware: true, fitted: true };
+  // Hover is the transient highlight; pinned survives, so the schedule still
+  // answers "which one is the rear tie rod?" on a touchscreen and by keyboard.
+  var hover = null, pinned = null;
+
+  function visible(p) { return shown[p.group]; }
+
+  /* ---- lighting and theme ---------------------------------------------- */
+  /* The model is lit identically in both themes. Tying its exposure to the
+     backdrop would make the same part read as two different greys depending on
+     the viewer's OS setting, which defeats the point of showing it. Only the
+     backdrop and the contact shadow follow the theme. */
+  var sky = [0.40, 0.42, 0.46];      // cool skylight
+  var grd = [0.11, 0.10, 0.09];      // warm bounce off the desk
+  var shadeCol = [0, 0, 0], shadeA = 0.3;
+  function readTheme() {
+    var cs = getComputedStyle(document.documentElement);
+    shadeCol = hexToRgb(cs.getPropertyValue("--shade").trim());
+    shadeA = parseFloat(cs.getPropertyValue("--shade-a")) || 0.3;
+    dirty = true;
+  }
+  function hexToRgb(h) {
+    h = h.replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16) / 255,
+            parseInt(h.slice(2, 4), 16) / 255,
+            parseInt(h.slice(4, 6), 16) / 255];
+  }
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readTheme);
+  new MutationObserver(readTheme).observe(document.documentElement,
+    { attributes: true, attributeFilter: ["data-theme"] });
+  readTheme();
+
+  /* ---- render ---------------------------------------------------------- */
+  function resize() {
+    var dpr = Math.min(devicePixelRatio || 1, 2);
+    var w = Math.round(stage.clientWidth * dpr), h = Math.round(stage.clientHeight * dpr);
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width = w; canvas.height = h;
+    if (!userZoomed) reframe();
+    dirty = true;
+  }
+
+  function draw() {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    var b = basis(cam.th, cam.ph);
+    var t = [cam.tx, cam.ty, cam.tz];
+    var eye = [t[0] - b.fwd[0] * cam.dist,
+               t[1] - b.fwd[1] * cam.dist,
+               t[2] - b.fwd[2] * cam.dist];
+    var proj = perspective(FOV, canvas.width / Math.max(canvas.height, 1),
+                           Math.max(cam.dist * 0.02, 1), cam.dist * 4 + 2000);
+    var view = lookAt(eye, t, [0, 1, 0]);
+
+    gl.useProgram(shadowProg);
+    gl.uniformMatrix4fv(shadowProg.u.uProj, false, proj);
+    gl.uniformMatrix4fv(shadowProg.u.uView, false, view);
+    gl.uniform1f(shadowProg.u.uY, GROUND_Y - 1.5);
+    gl.uniform1f(shadowProg.u.uR, DISC_R * (1 + explode * 0.55));
+    gl.uniform3fv(shadowProg.u.uCol, shadeCol);
+    gl.uniform1f(shadowProg.u.uA, shadeA * (1 - explode * 0.55));
+    gl.bindBuffer(gl.ARRAY_BUFFER, discBuf);
+    gl.enableVertexAttribArray(shadowProg.a.aXY);
+    gl.vertexAttribPointer(shadowProg.a.aXY, 2, gl.FLOAT, false, 0, 0);
+    gl.depthMask(false);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, RIM + 2);
+    gl.depthMask(true);
+    gl.disableVertexAttribArray(shadowProg.a.aXY);
+
+    gl.useProgram(prog);
+    gl.uniformMatrix4fv(prog.u.uProj, false, proj);
+    gl.uniformMatrix4fv(prog.u.uView, false, view);
+    gl.uniform3fv(prog.u.uSky, sky);
+    gl.uniform3fv(prog.u.uGround, grd);
+    gl.enableVertexAttribArray(prog.a.aPos);
+
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (!visible(p)) continue;
+      var c = p.rgb, focus = pinned || hover;
+      if (focus) {
+        if (p.row === focus) {
+          c = [c[0] * 1.6, c[1] * 1.6, c[2] * 1.6];   // tone curve absorbs it
+        } else {
+          var g = c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
+          c = [(c[0] * 0.12 + g * 0.88) * 0.26,
+               (c[1] * 0.12 + g * 0.88) * 0.26,
+               (c[2] * 0.12 + g * 0.88) * 0.26];
+        }
+      }
+      gl.uniform3fv(prog.u.uColour, c);
+      gl.uniform3fv(prog.u.uMin, p.min);
+      gl.uniform3fv(prog.u.uSpan, p.span);
+      gl.uniform3f(prog.u.uOffset, p.ex[0] * explode, p.ex[1] * explode, p.ex[2] * explode);
+      gl.bindBuffer(gl.ARRAY_BUFFER, p.buf);
+      gl.vertexAttribPointer(prog.a.aPos, 3, gl.UNSIGNED_SHORT, true, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, p.n);
+    }
+  }
+
+  function settle(a, b, k) { return Math.abs(b - a) < 1e-4 ? b : a + (b - a) * k; }
+
+  function frame() {
+    resize();
+    var k = reduced ? 1 : 0.19;
+    var before = cam.th + cam.ph + cam.dist + cam.tx + cam.ty + cam.tz + explode;
+    cam.th = settle(cam.th, want.th, k);
+    cam.ph = settle(cam.ph, want.ph, k);
+    cam.dist = settle(cam.dist, want.dist, k);
+    cam.tx = settle(cam.tx, want.tx, k);
+    cam.ty = settle(cam.ty, want.ty, k);
+    cam.tz = settle(cam.tz, want.tz, k);
+    explode = settle(explode, wantExplode, k);
+    if (dirty || Math.abs(before - (cam.th + cam.ph + cam.dist + cam.tx + cam.ty + cam.tz + explode)) > 1e-5) {
+      draw();
+      dirty = false;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---- pointer --------------------------------------------------------- */
+  var pointers = new Map(), lastPinch = 0;
+
+  canvas.addEventListener("pointerdown", function (e) {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey });
+    if (pointers.size === 2) lastPinch = pinchDist();
+  });
+  canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  function pinchDist() {
+    var v = Array.from(pointers.values());
+    return Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y);
+  }
+
+  canvas.addEventListener("pointermove", function (e) {
+    var p = pointers.get(e.pointerId);
+    if (!p) return;
+    var dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+
+    if (pointers.size >= 2) {
+      var d = pinchDist();
+      if (lastPinch > 0) {
+        want.dist = Math.min(Math.max(want.dist * (lastPinch / d), 40), 6000);
+        userZoomed = true;
+      }
+      lastPinch = d;
+      pan(dx / 2, dy / 2);
+    } else if (p.pan) {
+      pan(dx, dy);
+    } else {
+      want.th -= dx * 0.0075;
+      want.ph = Math.min(Math.max(want.ph + dy * 0.0075, -1.35), 1.53);
+    }
+    cam.th = want.th; cam.ph = want.ph;    // drag tracks the finger exactly
+    dirty = true;
+  });
+
+  /* Panning is a deliberate re-framing, so it stops the auto-fit from yanking
+     the view back the next time the explode or a group toggle changes. */
+  function pan(dx, dy) {
+    userZoomed = true;
+    var b = basis(want.th, want.ph);
+    var s = want.dist * Math.tan(FOV / 2) * 2 / Math.max(stage.clientHeight, 1);
+    want.tx -= (b.right[0] * dx - b.up[0] * dy) * s;
+    want.ty -= (b.right[1] * dx - b.up[1] * dy) * s;
+    want.tz -= (b.right[2] * dx - b.up[2] * dy) * s;
+    cam.tx = want.tx; cam.ty = want.ty; cam.tz = want.tz;
+  }
+
+  function release(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) lastPinch = 0;
+  }
+  canvas.addEventListener("pointerup", release);
+  canvas.addEventListener("pointercancel", release);
+
+  canvas.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    want.dist = Math.min(Math.max(want.dist * Math.exp(e.deltaY * 0.0011), 40), 6000);
+    userZoomed = true;
+    dirty = true;
+  }, { passive: false });
+
+  canvas.addEventListener("keydown", function (e) {
+    var step = 0.09, k = e.key;
+    if (k === "ArrowLeft") want.th -= step;
+    else if (k === "ArrowRight") want.th += step;
+    else if (k === "ArrowUp") want.ph = Math.min(want.ph + step, 1.53);
+    else if (k === "ArrowDown") want.ph = Math.max(want.ph - step, -1.35);
+    else if (k === "+" || k === "=") { want.dist = Math.max(want.dist * 0.86, 40); userZoomed = true; }
+    else if (k === "-" || k === "_") { want.dist = Math.min(want.dist * 1.16, 6000); userZoomed = true; }
+    else return;
+    e.preventDefault();
+    dirty = true;
+  });
+
+  /* ---- controls -------------------------------------------------------- */
+  var VIEWS = [
+    { id: "iso",   label: "Iso",   th: 0.62, ph: 0.40 },
+    { id: "front", label: "Front", th: 0.00, ph: 0.07 },
+    { id: "side",  label: "Side",  th: 1.5708, ph: 0.10 },
+    { id: "top",   label: "Top",   th: 0.00, ph: 1.4835 }
+  ];
+  var viewBox = document.getElementById("views");
+  VIEWS.forEach(function (v) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = v.label;
+    b.setAttribute("aria-pressed", v.id === "iso" ? "true" : "false");
+    b.addEventListener("click", function () {
+      want.th = v.th; want.ph = v.ph;
+      userZoomed = false;
+      reframe();
+      Array.prototype.forEach.call(viewBox.children, function (el) {
+        el.setAttribute("aria-pressed", String(el === b));
+      });
+    });
+    viewBox.appendChild(b);
+  });
+
+  var slider = document.getElementById("explode");
+  var sliderOut = document.getElementById("explodeOut");
+  function readSlider() {
+    wantExplode = slider.value / 100;
+    sliderOut.textContent = slider.value === "0" ? "seated" : slider.value + "%";
+  }
+  slider.addEventListener("input", function () {
+    readSlider();
+    if (!userZoomed) reframe();
+    dirty = true;
+  });
+
+  var groupBox = document.getElementById("groups");
+  GROUPS.forEach(function (g) {
+    var lab = document.createElement("label");
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.addEventListener("change", function () {
+      shown[g.id] = cb.checked;
+      if (!userZoomed) reframe();
+      document.querySelectorAll("tr[data-group='" + g.id + "']").forEach(function (tr) {
+        tr.classList.toggle("off", !cb.checked);
+      });
+      dirty = true;
+    });
+    var sw = document.createElement("span");
+    sw.className = "swatch";
+    sw.style.background = g.colour;
+    lab.appendChild(cb); lab.appendChild(sw);
+    lab.appendChild(document.createTextNode(g.label));
+    groupBox.appendChild(lab);
+  });
+
+  /* ---- parts schedule -------------------------------------------------- */
+  var rows = [], byRow = Object.create(null);
+  parts.forEach(function (p) {
+    var r = byRow[p.row];
+    if (!r) {
+      r = byRow[p.row] = { row: p.row, group: p.group, colour: p.colour,
+                           mat: p.mat, qty: 0 };
+      rows.push(r);
+    }
+    if (p.name) r.qty++;
+  });
+
+  var tbody = document.getElementById("sched");
+  rows.forEach(function (r) {
+    var tr = document.createElement("tr");
+    tr.dataset.group = r.group;
+    tr.innerHTML =
+      '<td><span class="pname"><span class="swatch"></span><span></span></span></td>' +
+      '<td class="qty"></td><td class="mat"></td>';
+    tr.querySelector(".swatch").style.background = r.colour;
+    tr.querySelector(".pname span:last-child").textContent = r.row;
+    tr.querySelector(".qty").textContent = r.qty > 1 ? "×" + r.qty : "1";
+    tr.querySelector(".mat").textContent = r.mat || "—";
+    tr.tabIndex = 0;
+    tr.setAttribute("aria-pressed", "false");
+    function pin() {
+      pinned = pinned === r.row ? null : r.row;
+      Array.prototype.forEach.call(tbody.children, function (el) {
+        var on = el === tr && pinned;
+        el.classList.toggle("on", !!on);
+        el.setAttribute("aria-pressed", String(!!on));
+      });
+      dirty = true;
+    }
+    tr.addEventListener("pointerenter", function () { hover = r.row; dirty = true; });
+    tr.addEventListener("pointerleave", function () { hover = null; dirty = true; });
+    tr.addEventListener("focus", function () { hover = r.row; dirty = true; });
+    tr.addEventListener("blur", function () { hover = null; dirty = true; });
+    tr.addEventListener("click", pin);
+    tr.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pin(); }
+    });
+    tbody.appendChild(tr);
+  });
+
+  /* ---- go -------------------------------------------------------------- */
+  /* Chrome restores form control values across a reload and does it silently,
+     without firing input. Left alone that desyncs the label from the scene --
+     the slider reads 40% over a model that is sitting fully seated. Adopt
+     whatever came back instead of arguing with it, so a reload keeps your
+     place. */
+  readSlider();
+  explode = wantExplode;
+
+  resize();
+  reframe();
+  cam.dist = want.dist; cam.tx = want.tx; cam.ty = want.ty; cam.tz = want.tz;
+  if (!reduced) { cam.dist *= 1.3; cam.th -= 0.22; }
+  addEventListener("resize", function () { dirty = true; });
+  requestAnimationFrame(frame);
+})();
+</script>

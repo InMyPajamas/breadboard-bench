@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plate 01 Measurements</title>
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --ink: #1b1b1b; --muted: #77726b; --line: #e4e0d9;
+    --done: #2f8f5b; --gate: #b5561c; --gate-bg: #fbeee4; --tip-bg: #f0ede6;
+    --focus: #2f6fc4; --now-bg: #e6eefb; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+      --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f; --tip-bg: #2a2925;
+      --focus: #6ea1ea; --now-bg: #1f2a3d; --bad: #f2867f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+    --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f; --tip-bg: #2a2925;
+    --focus: #6ea1ea; --now-bg: #1f2a3d; --bad: #f2867f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 18px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 20px 16px 70px;
+  }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 4px 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 16px; margin: 0 0 16px; }
+
+  /* the bar you look at from the bench: mic, what it heard, what it wants next */
+  .top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 12px; }
+  .now { display: flex; align-items: center; gap: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; }
+  .mic { flex: none; width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; font-size: 30px; color: #fff; background: var(--muted); }
+  .mic.on { background: var(--bad); animation: pulse 1.4s infinite; }
+  .mic:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 12px transparent; } 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 55%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .mic.on { animation: none; } }
+  .want { flex: 1; min-width: 0; }
+  .want .lbl { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .want .slot { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .want .nom { font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .last { flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .last .v { font-size: 40px; font-weight: 700; line-height: 1; }
+  .last .v.bad { color: var(--bad); }
+  .last .v.ok { color: var(--done); }
+  .last .k { font-size: 13px; color: var(--muted); }
+  .heard { margin: 8px 4px 0; font-size: 15px; color: var(--muted); min-height: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heard b { color: var(--ink); font-weight: 600; }
+
+  .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; padding: 14px 18px 10px; font-weight: 600; }
+  .card h2 small { text-transform: none; letter-spacing: 0; margin-left: 8px; font-weight: 400; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { font-size: 13px; font-weight: 600; color: var(--muted); text-align: right; padding: 6px 10px; border-top: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; padding-left: 18px; }
+  td { border-top: 1px solid var(--line); padding: 5px 6px; text-align: right; }
+  td.name { font-weight: 600; white-space: nowrap; }
+  td.name small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+  input.cell {
+    width: 100%; min-width: 74px; font: inherit; font-size: 19px; font-variant-numeric: tabular-nums; text-align: right;
+    color: var(--ink); background: transparent; border: 2px solid transparent; border-radius: 9px; padding: 7px 9px;
+  }
+  input.cell::placeholder { color: var(--line); }
+  input.cell:hover { border-color: var(--line); }
+  input.cell:focus { outline: none; border-color: var(--focus); }
+  input.cell.cur { background: var(--now-bg); border-color: var(--focus); }
+  input.cell.filled { font-weight: 600; }
+  input.cell.skipped { color: var(--muted); }
+
+  .pic { display: block; width: 100%; max-width: 460px; height: auto; margin: 4px auto 10px; padding: 0 18px; }
+  .how { margin: -4px 18px 12px; font-size: 15px; line-height: 1.45; color: var(--muted); }
+  th.f-length { color: #3d7fd9; } th.f-width { color: #e0862a; } th.f-height, th.f-thickness { color: #2fa36b; }
+
+  .res { padding: 0 18px 14px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .row:first-child { border-top: 0; }
+  .row .k small { display: block; color: var(--muted); font-size: 14px; }
+  .row .v { font-weight: 700; white-space: nowrap; text-align: right; }
+  .row .v.pass { color: var(--done); } .row .v.fail { color: var(--bad); } .row .v.wait { color: var(--muted); font-weight: 400; }
+
+  .say { padding: 0 18px 14px; font-size: 15px; line-height: 1.5; color: var(--muted); }
+  .say b { color: var(--ink); }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 18px 16px; }
+  button.b { background: none; border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 15px; padding: 9px 14px; border-radius: 10px; cursor: pointer; }
+  button.b:focus-visible { outline: 3px solid var(--focus); }
+  button.b.armed { color: #fff; background: var(--gate); border-color: var(--gate); }
+  .foot { margin: 8px 4px 0; font-size: 14px; color: var(--muted); }
+  .warn { background: var(--gate-bg); color: var(--gate); border-radius: 12px; padding: 12px 16px; font-size: 16px; margin: 0 0 12px; display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Plate 01 Measurements</h1>
+  <p class="sub">TPU regime · say a number and it lands in the highlighted box. One beep = taken, low buzz = not understood.</p>
+  <div class="warn" id="warn"></div>
+
+  <div class="top">
+    <div class="now">
+      <button class="mic" id="mic" aria-label="Start listening" title="Start / stop listening">🎙</button>
+      <div class="want">
+        <div class="lbl">Measure now</div>
+        <div class="slot" id="wantSlot">—</div>
+        <div class="nom" id="wantNom"></div>
+      </div>
+      <div class="last">
+        <div class="v" id="lastV">—</div>
+        <div class="k" id="lastK">last reading</div>
+      </div>
+    </div>
+    <div class="heard" id="heard">Press the mic, then just read the calipers out loud.</div>
+  </div>
+
+  <div class="cols">
+    <div id="sheets"></div>
+    <div>
+      <div class="card">
+        <h2>Verdict <small id="progress"></small></h2>
+        <div class="res" id="results"></div>
+      </div>
+      <div class="card">
+        <h2>What you can say</h2>
+        <div class="say">
+          <b>A number</b> — “twenty point one one” fills the blue box and moves on.<br>
+          <b>Several numbers</b> — “sixteen point two four, six point two five” fills two boxes.<br>
+          <b>“back”</b> — wipes the last reading and goes back to it.<br>
+          <b>“skip”</b> — leaves this box empty and moves on.<br>
+          <b>“pad four”, “block”, “rail two”, “weight”</b> — jumps there.<br>
+          <b>“length / width / height / thickness”</b> — jumps within the part.<br>
+          <b>“stop listening”</b> — turns the mic off.<br>
+          Or click any box and type.
+        </div>
+        <div class="btns">
+          <button class="b" id="copy">Copy results</button>
+          <button class="b" id="reset">Clear sheet</button>
+        </div>
+      </div>
+      <p class="foot" id="saveState"></p>
+    </div>
+  </div>
+</main>
+
+<script>
+// ---- the sheet -------------------------------------------------------------
+// Nominals are PLATE.md's. `tol` is only a sanity window for what the mic
+// heard ("2011" for 20.11, a stray "4"), never a pass/fail limit.
+const GROUPS = [
+  { id: "block", title: "tpu_block", sub: "the control — measure this first", img: "tpu_block",
+    how: "Flat side down, as it sat on the plate. Height: take it at a corner as well as the centre — a solid top can dome.", fields: [
+      ["L", "length", 20.00, 1.0], ["W", "width", 20.00, 1.0], ["H", "height", 4.20, 0.8]], rows: ["block"] },
+  { id: "pad", title: "Foot pads ×10", sub: "any order — the sheet sorts them into the three sizes", img: "foot_pad",
+    how: "Length is the long way, width the short way, both at mid-height. Height goes over the two ridges, not down in the groove. The picture shows the middle size; the other two are 0.12 smaller and larger.", fields: [
+      ["L", "length", 16.24, 1.0], ["W", "width", 6.24, 0.9], ["H", "height", 4.20, 0.8]],
+    rows: Array.from({ length: 10 }, (_, i) => "pad " + (i + 1)) },
+  { id: "rail", title: "rail_pad ×4", sub: "length reads ~19.6 by design — not measured", img: "rail_pad",
+    how: "Width is across the strip, thickness is top to bottom — the thin way. It is only 1.35, so close the jaws gently.", fields: [
+      ["W", "width", 4.20, 0.8], ["T", "thickness", 1.35, 0.5]],
+    rows: Array.from({ length: 4 }, (_, i) => "rail " + (i + 1)) },
+  { id: "weight", title: "One foot pad on the scale", sub: "grams", fields: [["g", "weight", 0.45, 0.4]], rows: ["weight"] },
+];
+
+const SLOTS = [];      // reading order: every field of a part, then the next part
+for (const g of GROUPS)
+  for (const r of g.rows)
+    for (const [key, word, nominal, tol] of g.fields)
+      SLOTS.push({ id: `${r}:${key}`, group: g.id, row: r, key, word, nominal, tol, unit: g.id === "weight" ? "g" : "mm" });
+
+let values = {};       // slot id -> number, or null for a deliberate skip
+let cur = 0;
+const els = {};
+
+const sheets = document.getElementById("sheets");
+for (const g of GROUPS) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h2>${g.title} <small>${g.sub}</small></h2>` +
+    (g.img ? `<img class="pic" src="img/${g.img}.png" alt="${g.title} with its measured dimensions labelled">` : "") +
+    (g.how ? `<p class="how">${g.how}</p>` : "");
+  const t = document.createElement("table");
+  t.innerHTML = `<tr><th></th>${g.fields.map(f => `<th class="f-${f[1]}">${f[1]} <span style="font-weight:400">${f[2].toFixed(2)}</span></th>`).join("")}</tr>`;
+  for (const r of g.rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="name">${r}<small data-tag="${r}"></small></td>`;
+    for (const f of g.fields) {
+      const id = `${r}:${f[0]}`;
+      const td = document.createElement("td");
+      const inp = document.createElement("input");
+      inp.className = "cell"; inp.inputMode = "decimal"; inp.placeholder = "·"; inp.autocomplete = "off";
+      inp.setAttribute("aria-label", `${r} ${f[1]}`);
+      inp.addEventListener("focus", () => { cur = SLOTS.findIndex(s => s.id === id); paint(); });
+      inp.addEventListener("change", () => {
+        const v = parseFloat(inp.value);
+        if (isNaN(v)) delete values[id]; else values[id] = v;
+        changed();
+      });
+      els[id] = inp; td.append(inp); tr.append(td);
+    }
+    t.append(tr);
+  }
+  card.append(t);
+  sheets.append(card);
+}
+
+// ---- turning speech into numbers and commands ------------------------------
+const WORD = { zero: 0, oh: 0, o: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
+  nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50 };
+// Only trusted when they sit inside a number ("four point TO"), never alone.
+const SOUNDS_LIKE = { to: 2, too: 2, for: 4, fore: 4, won: 1, ate: 8, tree: 3, free: 3, nein: 9, sex: 6 };
+const POINT = new Set(["point", "dot", "decimal", "period"]);
+const FIELD_WORD = { length: "L", long: "L", width: "W", wide: "W", height: "H", tall: "H", high: "H", thickness: "T", thick: "T" };
+
+function parse(text) {
+  const tok = text.toLowerCase().replace(/[,;:!?]/g, " ").replace(/-/g, " ")
+    .replace(/(\d)\s*(mm|millimeters?|millimetres?|grams?|g)\b/g, "$1 ").split(/\s+/).filter(Boolean);
+  const out = [];
+  let n = null;                               // {int, frac, chunks}: frac null = still in the whole part
+  const flush = () => {
+    if (!n) return;
+    const s = n.int + (n.frac ? "." + n.frac : "");
+    if (s !== "") out.push({ num: parseFloat(s), hadPoint: !!n.frac });
+    n = null;
+  };
+  const digits = (str) => {                   // feed digits into whichever side of the point is open
+    if (n && n.frac !== null) { n.frac += str; n.chunks.push(str); return; }
+    flush(); n = { int: str, frac: null, chunks: [] };
+  };
+  for (let i = 0; i < tok.length; i++) {
+    const w = tok[i], next = tok[i + 1];
+    if (/^\d*\.\d+$/.test(w)) { flush(); out.push({ num: parseFloat(w), hadPoint: true }); continue; }
+    if (/^\d+\.$/.test(w)) { flush(); n = { int: w.slice(0, -1), frac: "", chunks: [] }; continue; }
+    if (/^\d+$/.test(w)) { digits(w); continue; }
+    if (POINT.has(w)) {
+      if (n && n.frac !== null && n.chunks.length > 1) {
+        // "four point two two FOUR POINT one eight": that last chunk was the
+        // next reading's whole part, run on without a pause.
+        const head = n.chunks.pop();
+        n.frac = n.frac.slice(0, -head.length);
+        flush(); n = { int: head, frac: "", chunks: [] };
+      } else if (n && n.frac === null) n.frac = "";
+      else if (!n) n = { int: "0", frac: "", chunks: [] };
+      continue;
+    }
+    let val = WORD[w];
+    if (val === undefined && SOUNDS_LIKE[w] !== undefined && ((n && n.frac !== null) || POINT.has(next)))
+      val = SOUNDS_LIKE[w];
+    if (val !== undefined) {
+      if (n && n.frac === null && /^[2-5]0$/.test(n.int) && val < 10) n.int = String(parseInt(n.int) + val);  // twenty + one
+      else digits(String(val));
+      continue;
+    }
+    flush();
+    if (w === "back" || w === "undo" || w === "scratch" || w === "oops") out.push({ cmd: "back" });
+    else if (w === "skip" || w === "next") out.push({ cmd: "skip" });
+    else if (w === "stop" && next === "listening") { out.push({ cmd: "stop" }); i++; }
+    else if (w === "block") out.push({ cmd: "goto", row: "block" });
+    else if (w === "weight" || w === "weighs" || w === "scale") out.push({ cmd: "goto", row: "weight" });
+    else if ((w === "pad" || w === "rail") && next !== undefined) {
+      const k = /^\d+$/.test(next) ? parseInt(next) : WORD[next] ?? SOUNDS_LIKE[next];
+      if (k >= 1 && k <= (w === "pad" ? 10 : 4)) { out.push({ cmd: "goto", row: `${w} ${k}` }); i++; }
+    }
+    else if (FIELD_WORD[w]) out.push({ cmd: "field", key: FIELD_WORD[w] });
+  }
+  flush();
+  return out;
+}
+
+// The recogniser drops decimal points more than anything else: 20.11 -> "2011".
+function fit(slot, ev) {
+  const ok = (v) => Math.abs(v - slot.nominal) <= slot.tol;
+  if (ok(ev.num)) return ev.num;
+  if (!ev.hadPoint) for (const d of [10, 100, 1000]) if (ok(ev.num / d)) return ev.num / d;
+  return null;
+}
+
+// ---- moving around the sheet -----------------------------------------------
+function nextOpen(from) {
+  for (let i = from; i < SLOTS.length; i++) if (!(SLOTS[i].id in values)) return i;
+  for (let i = 0; i < from; i++) if (!(SLOTS[i].id in values)) return i;
+  return Math.min(from, SLOTS.length - 1);
+}
+
+function handle(text) {
+  let took = 0, missed = null;
+  for (const ev of parse(text)) {
+    if (ev.cmd === "stop") { listen(false); continue; }
+    if (ev.cmd === "skip") { values[SLOTS[cur].id] = null; cur = nextOpen(cur + 1); continue; }
+    if (ev.cmd === "back") {
+      let i = cur - 1;
+      while (i > 0 && !(SLOTS[i].id in values)) i--;
+      i = Math.max(i, 0); delete values[SLOTS[i].id]; cur = i; continue;
+    }
+    if (ev.cmd === "goto") { const i = SLOTS.findIndex(s => s.row === ev.row); if (i >= 0) cur = i; continue; }
+    if (ev.cmd === "field") {
+      const i = SLOTS.findIndex(s => s.row === SLOTS[cur].row && s.key === ev.key); if (i >= 0) cur = i; continue;
+    }
+    const slot = SLOTS[cur], v = fit(slot, ev);
+    if (v === null) { missed = ev.num; continue; }
+    values[slot.id] = v; took++;
+    show(v, slot, true);
+    cur = nextOpen(cur + 1);
+  }
+  if (missed !== null && !took) { show(missed, SLOTS[cur], false); beep(false); }
+  else if (took) beep(true);
+  changed();
+}
+
+function show(v, slot, ok) {
+  const e = document.getElementById("lastV");
+  e.textContent = v.toFixed(slot.unit === "g" ? 2 : 2);
+  e.className = "v " + (ok ? "ok" : "bad");
+  document.getElementById("lastK").textContent = ok ? `${slot.row} ${slot.word}` : `not a ${slot.word} — say it again`;
+}
+
+// ---- sound: you are looking at calipers, not the screen ---------------------
+let actx;
+function beep(ok) {
+  try {
+    actx = actx || new AudioContext();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = ok ? "sine" : "square"; o.frequency.value = ok ? 880 : 180;
+    g.gain.setValueAtTime(0.12, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + (ok ? 0.12 : 0.35));
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + (ok ? 0.13 : 0.36));
+  } catch (e) {}
+}
+
+// ---- the verdicts, straight from PLATE.md's "checks after the plate" --------
+const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+const f2 = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2);
+const num = (id) => (typeof values[id] === "number" ? values[id] : undefined);
+
+function derive() {
+  const d = { rows: [], tags: {} };
+  const add = (k, note, v, state) => d.rows.push({ k, note, v, state });
+
+  const bl = num("block:L"), bw = num("block:W"), bh = num("block:H");
+  if (bl !== undefined && bw !== undefined) {
+    const ox = (bl - 20) / 2, oy = (bw - 20) / 2, worst = Math.max(Math.abs(ox), Math.abs(oy));
+    d.block = { over_x: ox, over_y: oy, height_err: bh === undefined ? null : bh - 4.2 };
+    add("Block oversize per side", "over +0.15 = fix flow before trusting any pad", `${f2(ox)} / ${f2(oy)}`, worst <= 0.15 ? "pass" : "fail");
+  } else add("Block oversize per side", "needs block length + width", "waiting", "wait");
+
+  // Ten pads, three sizes, nobody knows which is which off the plate: the two
+  // smallest are 006, the two largest 018, the six between are 012 + production.
+  const pads = [];
+  for (let i = 1; i <= 10; i++) {
+    const L = num(`pad ${i}:L`), W = num(`pad ${i}:W`);
+    if (L !== undefined && W !== undefined) pads.push({ i, L, W });
+  }
+  if (pads.length === 10) {
+    const s = [...pads].sort((a, b) => (a.L + a.W) - (b.L + b.W));
+    const grp = { "006": s.slice(0, 2), "012": s.slice(2, 8), "018": s.slice(8) };
+    const nomL = { "006": 16.12, "012": 16.24, "018": 16.36 }, nomW = { "006": 6.12, "012": 6.24, "018": 6.36 };
+    d.pads = {};
+    for (const k in grp) {
+      const mL = mean(grp[k].map(p => p.L)), mW = mean(grp[k].map(p => p.W));
+      d.pads[k] = { pads: grp[k].map(p => p.i), mean_L: mL, mean_W: mW, over_L: mL - nomL[k], over_W: mW - nomW[k] };
+      grp[k].forEach(p => d.tags["pad " + p.i] = k);
+    }
+    const st = [d.pads["012"].mean_L - d.pads["006"].mean_L, d.pads["018"].mean_L - d.pads["012"].mean_L,
+                d.pads["012"].mean_W - d.pads["006"].mean_W, d.pads["018"].mean_W - d.pads["012"].mean_W];
+    d.steps = st;
+    // 0.12 is the design step. The +/-0.04 window is a reading aid, not a
+    // number from the build plan: half a step either way still separates sizes.
+    const ok = st.every(x => Math.abs(x - 0.12) <= 0.04);
+    add("Size steps (want 0.12)", "length lo→mid, mid→hi · width lo→mid, mid→hi", st.map(x => x.toFixed(2)).join(" "), ok ? "pass" : "fail");
+    add("Pad oversize, 012 group", "length / width vs 16.24 × 6.24", `${f2(d.pads["012"].over_L)} / ${f2(d.pads["012"].over_W)}`, "pass");
+  } else add("Size steps (want 0.12)", "needs length + width on all ten pads", `${pads.length}/10`, "wait");
+
+  const hs = []; for (let i = 1; i <= 10; i++) { const h = num(`pad ${i}:H`); if (h !== undefined) hs.push(h); }
+  if (hs.length >= 7) {
+    const sc = Math.max(...hs) - Math.min(...hs);
+    d.height = { n: hs.length, min: Math.min(...hs), max: Math.max(...hs), scatter: sc };
+    add("Pad height scatter", `${hs.length} pads · must be under 0.10`, sc.toFixed(2), sc < 0.10 ? "pass" : "fail");
+  } else add("Pad height scatter", "needs at least seven pad heights", `${hs.length}/7`, "wait");
+
+  const rw = [], rt = []; for (let i = 1; i <= 4; i++) { const w = num(`rail ${i}:W`), t = num(`rail ${i}:T`); if (w !== undefined) rw.push(w); if (t !== undefined) rt.push(t); }
+  if (rw.length && rt.length) {
+    d.rail = { mean_W: mean(rw), mean_T: mean(rt) };
+    add("Rail pad", "width vs 4.20 · thickness vs 1.35", `${f2(mean(rw) - 4.2)} / ${f2(mean(rt) - 1.35)}`, "pass");
+  } else add("Rail pad", "needs a width and a thickness", "waiting", "wait");
+
+  const g = num("weight:g");
+  if (g !== undefined) { d.weight = g; add("Foot pad weight", "under 0.40 g = the 100% preset is not real", g.toFixed(2) + " g", g >= 0.40 ? "pass" : "fail"); }
+  else add("Foot pad weight", "needs the scale reading", "waiting", "wait");
+  return d;
+}
+
+// ---- paint + save ----------------------------------------------------------
+function paint() {
+  for (const s of SLOTS) {
+    const e = els[s.id], v = values[s.id];
+    if (document.activeElement !== e) e.value = typeof v === "number" ? v.toFixed(2) : "";
+    e.placeholder = v === null ? "skip" : "·";
+    e.className = "cell" + (SLOTS[cur] === s ? " cur" : "") + (typeof v === "number" ? " filled" : "") + (v === null ? " skipped" : "");
+  }
+  const s = SLOTS[cur];
+  document.getElementById("wantSlot").textContent = `${s.row} · ${s.word}`;
+  document.getElementById("wantNom").textContent = `nominal ${s.nominal.toFixed(2)} ${s.unit}`;
+  const done = SLOTS.filter(x => x.id in values).length;
+  document.getElementById("progress").textContent = `· ${done}/${SLOTS.length} boxes`;
+
+  const d = derive();
+  document.querySelectorAll("[data-tag]").forEach(e => e.textContent = d.tags[e.dataset.tag] ? "→ " + d.tags[e.dataset.tag] : "");
+  const res = document.getElementById("results"); res.textContent = "";
+  for (const r of d.rows) {
+    const row = document.createElement("div"); row.className = "row";
+    const k = document.createElement("div"); k.className = "k"; k.textContent = r.k;
+    const n = document.createElement("small"); n.textContent = r.note; k.append(n);
+    const v = document.createElement("div"); v.className = "v " + r.state; v.textContent = r.v;
+    row.append(k, v); res.append(row);
+  }
+  els[s.id].scrollIntoView({ block: "nearest", behavior: "smooth" });
+  return d;
+}
+
+const KEY = "plate01-measurements-v1";
+let saveTimer;
+function changed() {
+  const d = paint();
+  try { localStorage.setItem(KEY, JSON.stringify(values)); } catch (e) {}
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const body = { plate: "01_tpu_regime", saved: new Date().toISOString(), values, derived: d };
+    fetch("/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(r => { if (!r.ok) throw 0; document.getElementById("saveState").textContent = "Saved to out/plate1_tpu/measurements.json · " + new Date().toLocaleTimeString(); })
+      .catch(() => { document.getElementById("saveState").textContent = "Not saving to disk (no server) — kept in this browser only. Use Copy results."; });
+  }, 400);
+}
+
+// ---- microphone ------------------------------------------------------------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const mic = document.getElementById("mic"), heard = document.getElementById("heard");
+let rec, listening = false;
+
+function listen(on) {
+  listening = on;
+  mic.classList.toggle("on", on);
+  mic.setAttribute("aria-label", on ? "Stop listening" : "Start listening");
+  if (!on) { try { rec && rec.stop(); } catch (e) {} heard.textContent = "Mic off."; return; }
+  rec = new SR();
+  rec.continuous = true; rec.interimResults = true; rec.lang = "en-US";
+  rec.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.trim();
+      heard.textContent = ""; heard.append("heard: ");
+      const b = document.createElement("b"); b.textContent = t; heard.append(b);
+      if (e.results[i].isFinal) handle(t);
+    }
+  };
+  rec.onerror = (e) => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { listen(false); heard.textContent = "Microphone blocked — allow it in the address bar, then press the mic again."; }
+    else if (e.error !== "no-speech" && e.error !== "aborted") heard.textContent = "mic: " + e.error;
+  };
+  // Chrome ends a "continuous" session by itself after a quiet spell.
+  rec.onend = () => { if (listening) { try { rec.start(); } catch (e) {} } };
+  rec.start();
+  heard.textContent = "Listening…";
+}
+
+if (!SR) {
+  const w = document.getElementById("warn"); w.style.display = "block";
+  w.textContent = "This browser has no speech recognition. Open this page in Chrome or Edge — or just type into the boxes.";
+  mic.disabled = true;
+} else mic.addEventListener("click", () => { beep(true); listen(!listening); });
+
+document.getElementById("copy").addEventListener("click", (e) => {
+  const lines = SLOTS.filter(s => typeof values[s.id] === "number").map(s => `${s.row} ${s.word} ${values[s.id].toFixed(2)}`);
+  navigator.clipboard.writeText(lines.join("\n")).then(() => { e.target.textContent = "Copied"; setTimeout(() => e.target.textContent = "Copy results", 1500); });
+});
+
+const resetBtn = document.getElementById("reset");
+let armTimer;
+resetBtn.addEventListener("click", () => {
+  if (!resetBtn.classList.contains("armed")) {
+    resetBtn.classList.add("armed"); resetBtn.textContent = "Click again to clear";
+    armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "Clear sheet"; }, 2500);
+    return;
+  }
+  clearTimeout(armTimer); values = {}; cur = 0;
+  resetBtn.classList.remove("armed"); resetBtn.textContent = "Clear sheet";
+  changed();
+});
+
+// Disk wins over the browser copy: it is the one Claude reads.
+fetch("/data").then(r => r.json()).then(j => { if (j && j.values) values = j.values; })
+  .catch(() => { try { values = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {} })
+  .finally(() => { cur = nextOpen(0); paint(); });
+</script>
+</body>
+</html>

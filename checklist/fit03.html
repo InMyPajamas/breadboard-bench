@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PETG gauges 03</title>
+<style>
+  :root { --bg:#f4f3ef; --card:#fff; --ink:#1b1c1f; --dim:#676a72; --line:#dcdad3; --pick:#1d4ed8; --pickink:#fff;
+          --good:#15803d; --bad:#b91c1c; --warn:#a16207; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131417; --card:#1d1f24; --ink:#eceae4; --dim:#9a9da6; --line:#30333b; --pick:#3b82f6; --pickink:#fff;
+            --good:#4ade80; --bad:#f87171; --warn:#facc15; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.45 -apple-system, system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--dim); font-size:14px; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:0 0 16px; }
+  .card h2 { margin:0 0 2px; font-size:18px; }
+  .card .how { margin:4px 0 12px; color:var(--dim); font-size:15px; }
+  .warn { color:var(--warn); font-weight:600; }
+  .item { border-top:1px solid var(--line); padding:12px 0 4px; }
+  .item .name { font-weight:600; margin-bottom:8px; }
+  .item .name small { font-weight:400; color:var(--dim); margin-left:6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; }
+  .opts button { flex:1 1 150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+                 background:transparent; color:var(--ink); font:inherit; font-size:15px; text-align:left; }
+  .opts button[aria-pressed="true"] { background:var(--pick); border-color:var(--pick); color:var(--pickink); font-weight:600; }
+  input.num { width:150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+              background:transparent; color:var(--ink); font:inherit; font-size:19px; }
+  textarea { width:100%; min-height:60px; margin-top:10px; padding:10px; border-radius:11px; border:1.5px solid var(--line);
+             background:transparent; color:var(--ink); font:inherit; font-size:15px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  td { padding:7px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  td.v { text-align:right; font-weight:600; white-space:nowrap; }
+  .pass { color:var(--good); } .fail { color:var(--bad); } .wait { color:var(--dim); font-weight:400; }
+  .pics { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+  .pics figure { flex:1 1 200px; max-width:320px; margin:0; }
+  .pics img { width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
+  .pics figcaption { font-size:13px; color:var(--dim); margin-top:4px; }
+  .pics figcaption b { color:var(--ink); }
+  #save { color:var(--dim); font-size:14px; margin:0 0 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PETG gauges <span id="count" style="font-weight:400;color:var(--dim);font-size:15px"></span></h1>
+  <p>Plate 03. Clips on the rail, magnets in their pockets. Tap what happened. Saves as you go.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>What this plate is asking</h2>
+    <p class="how">Every module on the bench hangs on the DIN rail by one printed clip: a rigid hook on one side, a sprung latch on the other. How much clearance that clip needs is still a guess in the CAD (0.25 per side), and plate 09, all the real modules, is built on it. This plate grades it. It was also the first print with a <b>PLA support interface</b> under PETG, so the first section asks how that went.</p>
+    <p class="how warn">Use the clean rail stub from plate 02b (lips-down, Matte). The first stub's lips sagged and will read every clip as tighter than it is.</p>
+  </div>
+  <div id="sections"></div>
+  <div class="card">
+    <h2>What the plate decided</h2>
+    <p class="how">Filled in from your answers. These go into cad/params.py and cad/frame.py before plate 09 is built.</p>
+    <table id="verdict"></table>
+  </div>
+  <p id="save"></p>
+</main>
+
+<script>
+// A clip is best TIGHT: the winner is the smallest clearance that still goes
+// on and holds. A magnet pocket is the same. Both walk up from the tightest.
+const three = (ids, names, subs, opts) => ids.map((id, i) => ({ id, name: names[i], sub: subs[i], type: "choice", opts }));
+const CLIP = [["tight", "Will not go on, or only by force"], ["good", "Snaps on, grips, no rattle"], ["loose", "Goes on but rattles or slides"]];
+const MAG = [["tight", "Magnet will not go in"], ["good", "Presses in and stays put"], ["loose", "Drops in loose, falls out"]];
+const SECTIONS = [
+  { id: "sup", title: "1. The supports (PLA interface under PETG)",
+    how: "Each clip has a thin support column inside it, under the tooth and under the release tab. The layers that touch the part are PLA, which does not bond to PETG.",
+    warn: "Check the relief slot beside each latch. If plastic bridged it, the latch cannot flex and the clip is dead no matter what the fit is.",
+    items: [
+      { id: "off", name: "How did the supports come off?", type: "choice",
+        opts: [["clean", "Popped off by hand, clean"], ["pick", "Needed a pick or pliers"], ["fused", "Fused, tore the part"]] },
+      { id: "face", name: "The faces the support touched", sub: "tooth underside and tab underside", type: "choice",
+        opts: [["clean", "Flat and clean"], ["rough", "A little rough, usable"], ["scar", "Scarred or drooped"]] },
+      { id: "slot", name: "Relief slots, all four clips", type: "choice",
+        opts: [["free", "All open, every latch flexes"], ["some", "One or more bridged shut"]] }] },
+
+  { id: "clip", title: "2. Clip clearance on the rail",
+    how: "Hook the rigid side over one rail lip, then rock the clip down until the latch snaps under the other lip. One to three nubs on the plate say which clip it is.",
+    items: three(["c1", "c2", "c3"], ["1 nub", "2 nubs", "3 nubs"],
+                 ["0.15 clearance per side", "0.25 clearance per side, the current guess", "0.35 clearance per side"], CLIP) },
+
+  { id: "latch", title: "3. The latch chamfer (4 nubs against 2 nubs)",
+    how: "The clip with 4 nubs is the same 0.25 clip as 2 nubs, but its latch tooth has a 45 degree lead-in where it first meets the rail lip. Put each on and take each off a few times.",
+    items: [
+      { id: "on", name: "Going on", type: "choice",
+        opts: [["cham", "Chamfered rocks on clearly easier"], ["same", "No real difference"], ["square", "Square one is better"]] },
+      { id: "hold", name: "Does the chamfered one still hold?", sub: "pull it straight off the rail", type: "choice",
+        opts: [["yes", "Holds as well as the square one"], ["less", "Pops off more easily"]] },
+      { id: "tab", name: "Release tab", sub: "lever the tab to take a clip off", type: "choice",
+        opts: [["easy", "Works with a fingertip"], ["stiff", "Works, but stiff"], ["no", "Cannot release it by the tab"]] }] },
+
+  { id: "magc", title: "4. Magnets, floor pockets",
+    how: "The row of pockets in the tile's underside, as in the side tray. Press a 6 x 2 magnet into each. One to three nubs beside each pocket.",
+    items: three(["m1", "m2", "m3"], ["1 nub", "2 nubs", "3 nubs"], ["6.10 pocket", "6.25 pocket, settled in PLA on plate 02", "6.40 pocket"], MAG) },
+
+  { id: "magw", title: "5. Magnets, wall pockets",
+    how: "The row in the upright wall, as in the side bin, where the magnet goes in sideways behind a screw-head pocket.",
+    items: three(["w1", "w2", "w3"], ["1 nub", "2 nubs", "3 nubs"], ["6.25 pocket", "6.40 pocket", "6.55 pocket"], MAG) },
+];
+
+let values = {};
+const $ = (s) => document.querySelector(s);
+const key = (sec, it) => sec.id + "." + it.id;
+
+for (const sec of SECTIONS) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h2>${sec.title}</h2><p class="how">${sec.how}</p>` + (sec.warn ? `<p class="how warn">${sec.warn}</p>` : "");
+  for (const it of sec.items) {
+    const k = key(sec, it), row = document.createElement("div");
+    row.className = "item";
+    row.innerHTML = `<div class="name">${it.name}${it.sub ? `<small>${it.sub}</small>` : ""}</div>`;
+    const box = document.createElement("div");
+    box.className = "opts";
+    for (const [val, label] of it.opts) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label; b.dataset.k = k; b.dataset.v = val;
+      b.addEventListener("click", () => { if (values[k] === val) delete values[k]; else values[k] = val; changed(); });
+      box.append(b);
+    }
+    row.append(box);
+    card.append(row);
+  }
+  const note = document.createElement("textarea");
+  note.placeholder = "Notes for this test (optional)"; note.dataset.k = sec.id + ".note";
+  note.addEventListener("change", () => { if (note.value.trim()) values[note.dataset.k] = note.value.trim(); else delete values[note.dataset.k]; changed(); });
+  card.append(note);
+  $("#sections").append(card);
+}
+
+function paint() {
+  for (const b of document.querySelectorAll(".opts button")) b.setAttribute("aria-pressed", values[b.dataset.k] === b.dataset.v);
+  for (const i of document.querySelectorAll("textarea")) if (document.activeElement !== i) i.value = values[i.dataset.k] ?? "";
+}
+
+// Tightest that works. If nothing was "good", say which way to move rather
+// than promoting a forced or rattling fit to a pass.
+function tightest(sec, ids, labels) {
+  const got = ids.map((id) => values[sec + "." + id]);
+  if (got.every((g) => g === undefined)) return { state: "wait" };
+  const i = got.indexOf("good");
+  if (i >= 0) return { value: labels[i], state: "pass" };
+  if (got.some((g) => g === undefined)) return { state: "wait" };
+  return { state: "fail", allTight: got.every((g) => g === "tight"), allLoose: got.every((g) => g === "loose") };
+}
+
+function derive() {
+  const rows = [], d = {};
+  const add = (k, note, v, state) => rows.push({ k, note, v, state });
+  const off = values["sup.off"], face = values["sup.face"], slot = values["sup.slot"];
+  if (off !== undefined && face !== undefined) {
+    const ok = off !== "fused" && face !== "scar";
+    d.PLA_INTERFACE_WORKS = ok;
+    add("PLA support interface", ok ? "keep it for plate 09: same paint, same two filaments" : "did not release clean: check PLA Basic, 230 C, zero top Z distance before plate 09", ok ? "works" : "problem", ok ? "pass" : "fail");
+  } else add("PLA support interface", "first use on this bench", "waiting", "wait");
+  if (slot !== undefined) add("Relief slots", slot === "free" ? "no support got into a slot" : "a bridged slot is a dead latch: the paint or the slot width has to change", slot === "free" ? "open" : "bridged", slot === "free" ? "pass" : "fail");
+
+  const c = tightest("clip", ["c1", "c2", "c3"], [0.15, 0.25, 0.35]);
+  if (c.state === "wait") add("RAIL_FIT", "clip clearance per side; 0.25 today, a guess", "waiting", "wait");
+  else if (c.state === "pass") { d.RAIL_FIT = c.value; add("RAIL_FIT", c.value === 0.25 ? "the guess was right" : "change params.py from 0.25 before plate 09", c.value.toFixed(2) + " mm", "pass"); }
+  else add("RAIL_FIT", c.allTight ? "even 0.35 is too tight: recut the trio at 0.40 to 0.60" : c.allLoose ? "even 0.15 rattles: recut the trio at 0.05 to 0.15" : "no clip was right: note what each did", "none", "fail");
+
+  const on = values["latch.on"], hold = values["latch.hold"];
+  if (on !== undefined && hold !== undefined) {
+    const use = on === "cham" && hold === "yes";
+    d.LATCH_CHAMFER = use;
+    add("Latch chamfer", use ? "easier on and still holds: chamfer every module's latch" : on === "cham" ? "easier on but holds less: keep the square tooth" : "no gain: keep the square tooth", use ? "add it" : "leave square", "pass");
+  } else add("Latch chamfer", "1.5 x 45 lead-in on the latch tooth", "waiting", "wait");
+  const tab = values["latch.tab"];
+  if (tab !== undefined) add("Release tab", tab === "no" ? "a clip that cannot be released is a clip that gets broken: lengthen the tab" : "the tab does its job", tab, tab === "no" ? "fail" : "pass");
+
+  for (const [sec, ids, labels, name] of [["magc", ["m1", "m2", "m3"], [6.10, 6.25, 6.40], "MAGNET pocket, floor"], ["magw", ["w1", "w2", "w3"], [6.25, 6.40, 6.55], "MAGNET pocket, wall"]]) {
+    const m = tightest(sec, ids, labels);
+    if (m.state === "wait") add(name, "tightest pocket that takes a magnet and keeps it", "waiting", "wait");
+    else if (m.state === "pass") { d[sec === "magc" ? "MAGNET_POCKET_FLOOR" : "MAGNET_POCKET_WALL"] = m.value; add(name, m.value === 6.25 ? "matches the 6.25 settled in PLA" : "PETG wants a different pocket than PLA's 6.25", m.value.toFixed(2) + " mm", "pass"); }
+    else add(name, m.allTight ? "all too tight: open the row" : m.allLoose ? "all loose: close the row, or glue" : "none was right", "none", "fail");
+  }
+  if (d.RAIL_FIT && d.LATCH_CHAMFER !== undefined && d.PLA_INTERFACE_WORKS && slot === "free")
+    add("Verdict", "clip fit and latch settled: put them in the CAD and plate 09 can be built", "GO", "pass");
+  return { rows, d };
+}
+
+const REQUIRED = SECTIONS.flatMap((s) => s.items.filter((i) => !i.optional).map((i) => key(s, i)));
+let timer;
+function render() {
+  const { rows, d } = derive();
+  $("#verdict").innerHTML = rows.map((r) => `<tr><td><b>${r.k}</b><br><span style="color:var(--dim)">${r.note}</span></td><td class="v ${r.state}">${r.v}</td></tr>`).join("");
+  $("#count").textContent = `${REQUIRED.filter((k) => k in values).length} of ${REQUIRED.length}`;
+  return d;
+}
+function changed() {
+  paint();
+  const d = render();
+  const done = REQUIRED.filter((k) => k in values).length;
+  try { localStorage.setItem("plate3", JSON.stringify(values)); } catch (e) {}
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    try {
+      const r = await fetch("/save?sheet=plate3", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plates: ["03"], saved_at: new Date().toISOString(),
+          answered: done, required: REQUIRED.length, complete: done === REQUIRED.length, values, derived: d }) });
+      $("#save").textContent = r.ok ? "Saved to out/plate3_petg/fit_results.json at " + new Date().toLocaleTimeString() : "Save failed (" + r.status + ") -- answers are kept in this browser.";
+    } catch (e) { $("#save").textContent = "Server not reachable -- answers are kept in this browser."; }
+  }, 400);
+}
+
+(async () => {
+  try { const r = await fetch("/data?sheet=plate3"); const j = await r.json(); if (j && j.values) values = j.values; } catch (e) {}
+  if (!Object.keys(values).length) try { values = JSON.parse(localStorage.getItem("plate3") || "{}"); } catch (e) {}
+  paint();
+  render();
+})();
+</script>
+</body>
+</html>

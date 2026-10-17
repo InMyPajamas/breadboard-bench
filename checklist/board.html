@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breadboard dimensions</title>
+<style>
+  :root { --bg:#f4f3ef; --card:#fff; --ink:#1b1c1f; --dim:#676a72; --line:#dcdad3;
+          --hot:#c2410c; --good:#15803d; --pick:#1d4ed8; --body:#e9e7e1; --tab:#cfcabf; --rail:#60646c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131417; --card:#1d1f24; --ink:#eceae4; --dim:#9a9da6; --line:#30333b;
+            --hot:#fb923c; --good:#4ade80; --pick:#3b82f6; --body:#3a3d44; --tab:#4a4e56; --rail:#8b939e; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.45 -apple-system, system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--dim); font-size:14px; }
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px;
+         grid-template-columns:minmax(300px, 380px) 1fr; align-items:start; }
+  @media (max-width:820px) { main { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h2 { margin:0 0 10px; font-size:17px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+         padding:7px 0; border-top:1px solid var(--line); }
+  .row:first-of-type { border-top:0; }
+  .row label { font-size:14.5px; }
+  .row label small { display:block; color:var(--dim); font-size:12.5px; }
+  input[type=number] { width:104px; min-height:44px; padding:6px 10px; border-radius:9px;
+      border:1.5px solid var(--line); background:transparent; color:var(--ink);
+      font:inherit; font-size:17px; text-align:right; }
+  input[type=number]:focus { outline:none; border-color:var(--pick); }
+  .which { display:flex; gap:8px; margin:2px 0 10px; }
+  .which button { flex:1; min-height:46px; border-radius:10px; border:1.5px solid var(--line);
+      background:transparent; color:var(--ink); font:inherit; font-size:15px; }
+  .which button[aria-pressed="true"] { background:var(--pick); border-color:var(--pick); color:#fff; font-weight:600; }
+  svg { width:100%; height:auto; display:block; background:transparent; }
+  .derived { list-style:none; margin:10px 0 0; padding:0; font:13px ui-monospace, monospace; }
+  .derived li { display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-top:1px solid var(--line); color:var(--dim); }
+  .derived li b { color:var(--ink); }
+  .derived li.warn b { color:var(--hot); }
+  button.save { width:100%; min-height:50px; margin-top:12px; border-radius:10px;
+      border:1.5px solid var(--good); background:transparent; color:var(--good);
+      font:inherit; font-size:15px; font-weight:600; }
+  button.save:hover { background:var(--good); color:var(--bg); }
+  #status { color:var(--dim); font-size:13px; margin-top:8px; min-height:1.3em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Breadboard dimensions</h1>
+  <p>Punch in what you measure. The drawings and the CAD follow these numbers.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>Which board</h2>
+    <div class="which" id="which"></div>
+    <div id="fields"></div>
+    <button class="save" id="save">Save &mdash; the CAD reads this</button>
+    <div id="status"></div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>3D</h2>
+      <svg id="iso" viewBox="0 0 640 300" role="img" aria-label="Isometric view"></svg>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Top view</h2>
+      <svg id="top" viewBox="0 0 640 210" role="img" aria-label="Top view"></svg>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Through one cleat</h2>
+      <svg id="sec" viewBox="0 0 640 230" role="img" aria-label="Section through a cleat"></svg>
+      <ul class="derived" id="derived"></ul>
+    </div>
+  </div>
+</main>
+
+<script>
+// ---- the numbers ------------------------------------------------------------
+// Everything the rail has to be cut to lives here. Defaults are what has been
+// measured so far; the user overwrites whichever is wrong.
+const FIELDS = [
+  ["L",        "Length",            "end to end",                          165.10],
+  ["W",        "Width",             "plain body, NOT including tabs",       54.74],
+  ["H",        "Thickness",         "board only, ignoring the tape",         9.40],
+  ["N",        "Cleats per edge",   "how many tabs along one long edge",        3],
+  ["SP",       "Cleat spacing",     "tip centre to tip centre",             65.21],
+  ["TAB_W",    "Tab width at tip",  "the wide end",                          4.07],
+  ["TAB_BASE", "Tab width at base", "where it meets the board",              3.85],
+  ["TAB_PROUD","Tab stands proud",  "how far it sticks out past the edge",   1.41],
+  ["TAB_H",    "Tab height",        "bottom flush with the board underside", 5.20],
+  ["NOTCH_D",  "Notch depth",       "on the opposite edge",                  1.60],
+];
+const BOARDS = {
+  full: { label: "Full  830pt", v: { L:165.10, W:54.74, H:9.40, N:3, SP:65.21,
+          TAB_W:4.07, TAB_BASE:3.85, TAB_PROUD:1.41, TAB_H:5.20, NOTCH_D:1.60 } },
+  half: { label: "Half  400pt", v: { L:81.89, W:53.94, H:9.40, N:2, SP:53.51,
+          TAB_W:4.07, TAB_BASE:3.85, TAB_PROUD:1.41, TAB_H:5.20, NOTCH_D:1.60 } },
+};
+const RAIL_GAP = 55.14;        // settled on plate 02i
+const FIT = 0.30;              // pocket clearance the CAD uses
+
+let which = "full";
+let V = { ...BOARDS.full.v };
+
+const $ = (s) => document.querySelector(s);
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  parent.appendChild(n); return n;
+}
+function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+const css = (v) => getComputedStyle(document.body).getPropertyValue(v).trim();
+
+// ---- the form ---------------------------------------------------------------
+const whichBox = $("#which");
+for (const [k, b] of Object.entries(BOARDS)) {
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.textContent = b.label; btn.dataset.k = k;
+  btn.addEventListener("click", () => {
+    which = k; V = { ...BOARDS[k].v }; paintForm(); draw(); load();
+  });
+  whichBox.append(btn);
+}
+const fieldsBox = $("#fields");
+for (const [key, name, hint] of FIELDS) {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `<label for="f_${key}">${name}<small>${hint}</small></label>`;
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.step = key === "N" ? "1" : "0.01"; inp.id = "f_" + key;
+  inp.addEventListener("input", () => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) { V[key] = v; draw(); }
+  });
+  row.append(inp); fieldsBox.append(row);
+}
+function paintForm() {
+  for (const b of whichBox.children) b.setAttribute("aria-pressed", b.dataset.k === which);
+  for (const [key] of FIELDS) $("#f_" + key).value = V[key];
+}
+
+// ---- drawing ----------------------------------------------------------------
+function stations() {
+  const n = Math.max(1, Math.round(V.N));
+  const span = V.SP * (n - 1);
+  const first = (V.L - span) / 2;
+  return Array.from({ length: n }, (_, i) => first + i * V.SP);
+}
+
+function drawTop() {
+  const svg = $("#top"); clear(svg);
+  const m = 46, w = 640 - m * 2;
+  const s = w / Math.max(V.L, 1);
+  const y0 = 58, h = V.W * s;
+  el("rect", { x:m, y:y0, width:V.L*s, height:h, fill:css("--body"),
+               stroke:css("--ink"), "stroke-width":1.5, rx:2 }, svg);
+  el("line", { x1:m, y1:y0+h/2, x2:m+V.L*s, y2:y0+h/2, stroke:css("--dim"), "stroke-width":0.8 }, svg);
+  for (const x of stations()) {
+    el("rect", { x:m + (x - V.TAB_W/2)*s, y:y0 + h, width:V.TAB_W*s, height:V.TAB_PROUD*s,
+                 fill:css("--tab"), stroke:css("--ink"), "stroke-width":1.2 }, svg);
+    el("rect", { x:m + (x - V.TAB_W/2)*s, y:y0, width:V.TAB_W*s, height:V.NOTCH_D*s,
+                 fill:css("--bg"), stroke:css("--ink"), "stroke-width":1.2 }, svg);
+  }
+  const st = stations();
+  for (let i = 0; i < st.length - 1; i++) {
+    const a = m + st[i]*s, b = m + st[i+1]*s, yy = y0 + h + V.TAB_PROUD*s + 26;
+    el("line", { x1:a, y1:yy, x2:b, y2:yy, stroke:css("--hot"), "stroke-width":1.6,
+                 "marker-start":"", "marker-end":"" }, svg);
+    for (const xx of [a, b]) el("line", { x1:xx, y1:yy-5, x2:xx, y2:yy+5,
+                 stroke:css("--hot"), "stroke-width":1.6 }, svg);
+    const t = el("text", { x:(a+b)/2, y:yy-8, fill:css("--hot"), "font-size":13,
+                 "font-weight":"700", "text-anchor":"middle" }, svg);
+    t.textContent = V.SP.toFixed(2);
+  }
+  const lab = el("text", { x:320, y:30, fill:css("--ink"), "font-size":14,
+               "text-anchor":"middle", "font-weight":"700" }, svg);
+  lab.textContent = `${V.L.toFixed(2)} long  ·  ${V.W.toFixed(2)} wide  ·  ${Math.round(V.N)} cleats`;
+}
+
+function drawIso() {
+  const svg = $("#iso"); clear(svg);
+  const s = 520 / Math.max(V.L, 1), kx = 0.55, ky = -0.30;   // simple axonometric
+  const ox = 60, oy = 200;
+  const P = (x, y, z) => [ox + x*s + y*s*kx, oy - z*s*2.2 + y*s*ky];
+  const face = (pts, fill) => {
+    const p = el("polygon", { points: pts.map(q => q.join(",")).join(" "),
+      fill, stroke: css("--ink"), "stroke-width":1.1, "stroke-linejoin":"round" }, svg);
+    return p;
+  };
+  const L = V.L, W = V.W, H = V.H;
+  // top, front and right faces of the slab
+  face([P(0,0,H), P(L,0,H), P(L,W,H), P(0,W,H)], css("--body"));
+  face([P(0,0,0), P(L,0,0), P(L,0,H), P(0,0,H)], css("--tab"));
+  face([P(L,0,0), P(L,W,0), P(L,W,H), P(L,0,H)], css("--rail"));
+  // the tabs on the near edge
+  for (const x of stations()) {
+    const a = x - V.TAB_W/2, b = x + V.TAB_W/2, d = -V.TAB_PROUD;
+    face([P(a,0,V.TAB_H), P(b,0,V.TAB_H), P(b,d,V.TAB_H), P(a,d,V.TAB_H)], css("--tab"));
+    face([P(a,d,0), P(b,d,0), P(b,d,V.TAB_H), P(a,d,V.TAB_H)], css("--tab"));
+  }
+  const t = el("text", { x:320, y:24, fill:css("--dim"), "font-size":13,
+               "text-anchor":"middle" }, svg);
+  t.textContent = "tabs on the near edge · notches opposite";
+}
+
+function drawSection() {
+  const svg = $("#sec"); clear(svg);
+  const s = 26, ox = 150, oy = 40;
+  const pocketD = V.TAB_PROUD + FIT;
+  // rail block with the pocket cut in its face
+  el("rect", { x:ox-120, y:oy, width:120, height:170, fill:css("--rail"),
+               stroke:css("--ink"), "stroke-width":1.5 }, svg);
+  el("rect", { x:ox-pocketD*s, y:oy+30, width:pocketD*s, height:V.TAB_H*s,
+               fill:css("--bg"), stroke:css("--ink"), "stroke-width":1.2 }, svg);
+  // board edge + its tab
+  el("rect", { x:ox, y:oy+30, width:230, height:V.H*s, fill:css("--body"),
+               stroke:css("--ink"), "stroke-width":1.5 }, svg);
+  el("rect", { x:ox-V.TAB_PROUD*s, y:oy+30, width:V.TAB_PROUD*s, height:V.TAB_H*s,
+               fill:css("--tab"), stroke:css("--ink"), "stroke-width":1.2 }, svg);
+  const lbl = (x, y, txt, col, anchor="start") => {
+    const t = el("text", { x, y, fill:col, "font-size":12.5, "font-weight":"700",
+                 "text-anchor":anchor }, svg); t.textContent = txt;
+  };
+  lbl(ox+238, oy+42, `tab ${V.TAB_PROUD.toFixed(2)} proud`, css("--hot"));
+  lbl(ox+238, oy+60, `pocket cut ${pocketD.toFixed(2)} (tab + ${FIT})`, css("--dim"));
+  lbl(ox+238, oy+78, `tab ${V.TAB_H.toFixed(2)} tall`, css("--dim"));
+}
+
+function derived() {
+  const ul = $("#derived"); ul.innerHTML = "";
+  const slack = RAIL_GAP - V.W;
+  const left = V.TAB_PROUD - slack;
+  const rows = [
+    ["rail gap (settled)", RAIL_GAP.toFixed(2), false],
+    ["side slack", slack.toFixed(2) + " mm", slack > 0.7],
+    ["tab still engaged if pushed over", left.toFixed(2) + " mm", left < 0.6],
+    ["pocket width the CAD cuts", (V.TAB_W + FIT).toFixed(2), false],
+    ["pocket depth the CAD cuts", (V.TAB_PROUD + FIT).toFixed(2), false],
+    ["stations along the board", stations().map(x => x.toFixed(2)).join(", "), false],
+  ];
+  for (const [k, v, warn] of rows) {
+    const li = document.createElement("li");
+    if (warn) li.className = "warn";
+    li.innerHTML = `<span>${k}</span><b>${v}</b>`;
+    ul.append(li);
+  }
+}
+
+function draw() { drawIso(); drawTop(); drawSection(); derived(); }
+
+// ---- persistence ------------------------------------------------------------
+async function load() {
+  try {
+    const r = await fetch("/data?sheet=board");
+    const j = await r.json();
+    if (j && j[which]) { V = { ...V, ...j[which] }; paintForm(); draw(); }
+  } catch (e) {}
+}
+$("#save").addEventListener("click", async () => {
+  try {
+    const r = await fetch("/data?sheet=board").then(x => x.json()).catch(() => ({}));
+    const doc = { ...(r || {}), [which]: { ...V },
+                  saved_at: new Date().toISOString() };
+    const res = await fetch("/save?sheet=board", { method:"POST",
+      headers:{ "Content-Type":"application/json" }, body: JSON.stringify(doc) });
+    $("#status").textContent = res.ok
+      ? `Saved to out/board_dims.json at ${new Date().toLocaleTimeString()} — cad/board_dims.py and the rail will use these.`
+      : `Save failed (${res.status}).`;
+  } catch (e) { $("#status").textContent = "Server not reachable."; }
+});
+
+paintForm(); draw(); load();
+</script>
+</body>
+</html>

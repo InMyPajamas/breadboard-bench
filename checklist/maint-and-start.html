@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>H2S Maint &amp; First Plate</title>
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --ink: #1b1b1b; --muted: #77726b; --line: #e4e0d9;
+    --done: #2f8f5b; --gate: #b5561c; --gate-bg: #fbeee4; --tip-bg: #f0ede6;
+    --oil: #2f6fc4; --grease: #7a4bc2; --tpu: #7a4bc2;
+    --focus: #2f6fc4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+      --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f; --tip-bg: #2a2925;
+      --oil: #6ea1ea; --grease: #b08cf0; --tpu: #b08cf0; --focus: #6ea1ea;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+    --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f; --tip-bg: #2a2925;
+    --oil: #6ea1ea; --grease: #b08cf0; --tpu: #b08cf0; --focus: #6ea1ea;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 19px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 70px max(16px, env(safe-area-inset-left));
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 4px 0 6px; letter-spacing: -0.02em; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 16px; margin: 0 0 18px; }
+
+  .overall { display: flex; align-items: center; gap: 12px; margin: 0 0 22px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--done); transition: width .25s; }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+
+  .section { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 26px 4px 10px; }
+  .section small { text-transform: none; letter-spacing: 0; margin-left: 8px; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+  summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 18px 18px; min-height: 68px; }
+  summary::-webkit-details-marker { display: none; }
+  summary:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+  .num { font-weight: 700; font-size: 20px; min-width: 40px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .name { font-weight: 600; font-size: 21px; flex: 1; }
+  .chip { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 9px; border-radius: 99px; letter-spacing: 0.04em; }
+  .chip.OIL { background: var(--oil); } .chip.GREASE { background: var(--grease); } .chip.TPU { background: var(--tpu); }
+  .count { font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+  details.complete { border-color: var(--done); }
+  details.complete .count, details.complete .num { color: var(--done); font-weight: 700; }
+
+  ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  li { border-bottom: 1px solid var(--line); }
+  li:last-child { border-bottom: 0; }
+  li label { display: flex; align-items: center; gap: 16px; padding: 14px 18px; min-height: 60px; cursor: pointer; }
+  input[type=checkbox] {
+    appearance: none; -webkit-appearance: none; flex: none;
+    width: 32px; height: 32px; border: 2.5px solid var(--muted); border-radius: 9px; margin: 0; display: grid; place-content: center; background: transparent;
+  }
+  input[type=checkbox]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  input[type=checkbox]:checked { background: var(--done); border-color: var(--done); }
+  input[type=checkbox]:checked::after { content: ""; width: 9px; height: 16px; border: solid #fff; border-width: 0 3.5px 3.5px 0; transform: translateY(-2px) rotate(45deg); }
+  input:checked + span { color: var(--muted); text-decoration: line-through; }
+  li.gate label { background: var(--gate-bg); }
+  li span b { color: var(--gate); font-size: 13px; letter-spacing: 0.06em; margin-right: 6px; }
+  .tip { margin: -6px 18px 12px 66px; font-size: 15px; line-height: 1.4; color: var(--muted); }
+  li.gate .tip { margin-top: 0; padding-top: 8px; }
+
+  .note { background: var(--tip-bg); border-radius: 12px; padding: 12px 16px; font-size: 16px; line-height: 1.4; margin: 0 0 12px; }
+  .note b { font-weight: 700; }
+
+  .reset { display: block; margin: 8px 18px 14px auto; background: none; border: 1px solid var(--line); color: var(--muted); font: inherit; font-size: 15px; padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+  .reset:focus-visible { outline: 3px solid var(--focus); }
+  .reset.armed { color: #fff; background: var(--gate); border-color: var(--gate); }
+  .foot { margin: 30px 4px 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
+</style>
+
+</head>
+<body>
+<main>
+  <h1>H2S Maint &amp; First Plate</h1>
+  <p class="sub">Bambu H2S · Breadboard Bench · do it in this order, top to bottom.</p>
+  <div class="overall"><div class="bar"><i id="bar"></i></div><span id="total">0/0</span></div>
+
+  <div class="note">The two reminders on the printer screen are <b>hour-based</b>, not faults. Finish them <b>before plate 01</b>: plates 01–03 are measuring prints that set constants for every plate after them.</div>
+
+  <div id="app"></div>
+
+  <p class="foot">Ticks are saved in this browser only. Exact spots and amounts: <b>H2S maintenance guide</b> on the Bambu Lab wiki. Use the grease and oil from the H2S accessory box.</p>
+</main>
+
+<script>
+// "!" prefix = gate (must be true before going on). "*" prefix = don't-forget manual step.
+// An item can be [text, tip] to show a one-line tip under it.
+const CARDS = [
+  { section: "Maintenance", sub: "what the screen flagged" },
+  { id: "prep", num: "0", name: "Get ready", items: [
+    "Filament unloaded",
+    "Build plate out of the printer",
+    ["!Power OFF and unplugged", "Hands go near belts and the lead screws. Kill the power first."],
+    "Lint-free cloth + the accessory-box oil and grease",
+  ]},
+  { id: "z", num: "Z", name: "Lead screws ×3", mat: "GREASE", items: [
+    ["Wipe old grease and dust off all 3 threads", "Old grease holds grit. Clean before you add new."],
+    ["Thin, even line of GREASE along each thread", "A little goes a long way. Too much collects dust."],
+  ]},
+  { id: "yz", num: "YZ", name: "Smooth rods", mat: "OIL", items: [
+    "Y rods ×2: wipe clean",
+    "Y rods: light film of OIL, push the gantry to spread it",
+    "Z rods ×3: wipe clean",
+    "Z rods: light film of OIL",
+  ]},
+  { id: "x", num: "X", name: "X linear rail", mat: "OIL", items: [
+    "Wipe the rail clean, both ends",
+    ["Lube the rail top and bottom as the on-screen guide says", "The guide tells you oil or grease for the X rail. Follow it."],
+    "Slide the toolhead end to end, wipe any drips",
+  ]},
+  { id: "run", num: "▶", name: "Run it in", items: [
+    "Plug in, power ON",
+    ["*Assistant → Maintenance → Go to maintain", "The printer moves every axis for you to spread the lube."],
+    "Jog the bed full travel ×3",
+    ["Wipe grease that squeezed out", "Excess just gathers dust."],
+    "Confirm on screen so both reminders clear",
+    ["Wash the plate with soap while it's out", "Keeps any oil or grease off the print surface."],
+  ]},
+  { id: "head", num: "TH", name: "Toolhead check", items: [
+    "Extruder gear: no dust, no wear",
+    "Cutter blade sharp (swap every 3–5 spools)",
+    "Silicone sock tight, not torn",
+    "Purge wiper silicone intact",
+    "Cold pull if ~5 spools since last",
+    "Brush duct + aux fan",
+  ]},
+
+  { section: "Start of the print" },
+  { id: "studio", num: "✓", name: "First open in Studio", items: [
+    "01 → 15 objects in a row",
+    "06 → 5 walls · 25% · 5 mm brim",
+    "04 → rear_tie has its own brim",
+  ]},
+  { id: "hw", num: "⚙", name: "Hardware on the bench", items: [
+    "Calipers",
+    "M3×12 socket head",
+    "M3×16 countersunk (maybe ×14)",
+    "M3 square nuts",
+    "7 × N52 magnets (Ø6×2)",
+  ]},
+  { id: "p01", num: "01", name: "Plate 01 · TPU pads", mat: "TPU", items: [
+    "Filament: TPU for AMS",
+    "*Outermost AMS slot",
+    "Chamber heater OFF",
+    "Plate washed",
+    "Nozzle 0.4 (Studio + printer)",
+    "0.20 mm layers",
+    "*No brim",
+    "Overrides match PLATES.md",
+    "Preview looks clean",
+    "!Watch the first layer",
+    "After: measure the square first",
+  ]},
+];
+
+const KEY = "h2s-maint-first-plate-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+const app = document.getElementById("app");
+const cardUpdaters = [];
+let grand = 0;
+
+for (const c of CARDS) {
+  if (c.section) {
+    const h = document.createElement("div");
+    h.className = "section";
+    h.textContent = c.section;
+    if (c.sub) { const s = document.createElement("small"); s.textContent = "· " + c.sub; h.append(s); }
+    app.append(h);
+    continue;
+  }
+  const items = c.items;
+  grand += items.length;
+
+  const d = document.createElement("details");
+  d.id = c.id;
+  if (state[c.id + ":open"]) d.open = true;
+  d.addEventListener("toggle", () => { state[c.id + ":open"] = d.open; save(); });
+
+  const s = document.createElement("summary");
+  s.innerHTML = `<span class="num">${c.num}</span><span class="name">${c.name}</span>` +
+    (c.mat ? `<span class="chip ${c.mat}">${c.mat}</span>` : "") + `<span class="count"></span>`;
+  d.append(s);
+
+  const ul = document.createElement("ul");
+  items.forEach((it, i) => {
+    const raw = Array.isArray(it) ? it[0] : it;
+    const tip = Array.isArray(it) ? it[1] : null;
+    const gate = raw.startsWith("!"), star = raw.startsWith("*");
+    const text = gate || star ? raw.slice(1) : raw;
+    const k = `${c.id}:${i}`;
+    const li = document.createElement("li");
+    if (gate) li.className = "gate";
+    li.innerHTML = `<label><input type="checkbox"><span>${gate ? "<b>GATE</b>" : star ? "<b>★</b>" : ""}${text}</span></label>` +
+      (tip ? `<div class="tip">${tip}</div>` : "");
+    const box = li.querySelector("input");
+    box.checked = !!state[k];
+    box.addEventListener("change", () => { state[k] = box.checked; save(); update(); updateAll(); });
+    ul.append(li);
+  });
+  d.append(ul);
+
+  const r = document.createElement("button");
+  r.className = "reset"; r.textContent = "Reset";
+  let timer;
+  r.addEventListener("click", () => {
+    if (!r.classList.contains("armed")) {
+      r.classList.add("armed"); r.textContent = "Tap again to reset";
+      timer = setTimeout(() => { r.classList.remove("armed"); r.textContent = "Reset"; }, 2500);
+      return;
+    }
+    clearTimeout(timer);
+    items.forEach((_, i) => delete state[`${c.id}:${i}`]);
+    save();
+    ul.querySelectorAll("input").forEach(b => b.checked = false);
+    r.classList.remove("armed"); r.textContent = "Reset";
+    update(); updateAll();
+  });
+  d.append(r);
+
+  function update() {
+    const done = items.filter((_, i) => state[`${c.id}:${i}`]).length;
+    s.querySelector(".count").textContent = `${done}/${items.length}`;
+    d.classList.toggle("complete", done === items.length);
+    return done;
+  }
+  cardUpdaters.push(update);
+  update();
+  app.append(d);
+}
+
+function updateAll() {
+  const done = cardUpdaters.reduce((n, u) => n + u(), 0);
+  document.getElementById("total").textContent = `${done}/${grand}`;
+  document.getElementById("bar").style.width = grand ? (100 * done / grand) + "%" : "0";
+}
+updateAll();
+</script>
+
+</body>
+</html>

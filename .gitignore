@@ -1,0 +1,20 @@
+# Generated. Rebuild with the scripts in cad/ (see README, "Build it yourself").
+out/*
+!out/plates/
+!out/step/
+out/plates/*_SAVED_*
+renders/
+__pycache__/
+*.pyc
+result.json
+
+# Third-party models: download them yourself (ref/README.md lists where).
+ref/*
+!ref/README.md
+!ref/templates/
+
+# Local tooling and OS files
+.claude/
+.codex/
+.DS_Store
+.venv/

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plate 02 fit test</title>
+<style>
+  :root { --bg:#f4f3ef; --card:#fff; --ink:#1b1c1f; --dim:#676a72; --line:#dcdad3; --pick:#1d4ed8; --pickink:#fff;
+          --good:#15803d; --bad:#b91c1c; --warn:#a16207; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131417; --card:#1d1f24; --ink:#eceae4; --dim:#9a9da6; --line:#30333b; --pick:#3b82f6; --pickink:#fff;
+            --good:#4ade80; --bad:#f87171; --warn:#facc15; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.45 -apple-system, system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--dim); font-size:14px; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:0 0 16px; }
+  .card h2 { margin:0 0 2px; font-size:18px; }
+  .card .how { margin:4px 0 12px; color:var(--dim); font-size:15px; }
+  .warn { color:var(--warn); font-weight:600; }
+  .item { border-top:1px solid var(--line); padding:12px 0 4px; }
+  .item .name { font-weight:600; margin-bottom:8px; }
+  .item .name small { font-weight:400; color:var(--dim); margin-left:6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; }
+  .opts button { flex:1 1 150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+                 background:transparent; color:var(--ink); font:inherit; font-size:15px; text-align:left; }
+  .opts button[aria-pressed="true"] { background:var(--pick); border-color:var(--pick); color:var(--pickink); font-weight:600; }
+  input.num { width:150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+              background:transparent; color:var(--ink); font:inherit; font-size:19px; }
+  label.num { display:inline-flex; align-items:center; gap:10px; margin:0 14px 8px 0; color:var(--dim); font-size:15px; }
+  textarea { width:100%; min-height:60px; margin-top:10px; padding:10px; border-radius:11px; border:1.5px solid var(--line);
+             background:transparent; color:var(--ink); font:inherit; font-size:15px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  td { padding:7px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  td.v { text-align:right; font-weight:600; white-space:nowrap; }
+  .pass { color:var(--good); } .fail { color:var(--bad); } .wait { color:var(--dim); font-weight:400; }
+  .pics { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+  .pics figure { flex:1 1 200px; max-width:320px; margin:0; }
+  .pics img { width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
+  .pics figcaption { font-size:13px; color:var(--dim); margin-top:4px; }
+  .pics figcaption b { color:var(--ink); }
+  #save { color:var(--dim); font-size:14px; margin:0 0 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Plate 02 fit test <span id="count" style="font-weight:400;color:var(--dim);font-size:15px"></span></h1>
+  <p>Tap what happened. Saves as you go. Nothing from plate 04 on is sliced until every line has an answer.</p>
+</header>
+<main>
+  <div id="sections"></div>
+  <div class="card">
+    <h2>What the plate decided</h2>
+    <p class="how">Filled in from your answers. These are the constants that go back into the CAD.</p>
+    <table id="verdict"></table>
+  </div>
+  <p id="save"></p>
+</main>
+
+<script>
+// ---- the test, from the hub's stage 2 checks ---------------------------------
+// choice options are [value, label]; the FIRST "good" option listed in `win`
+// is what makes a candidate the winner.
+const FIT3 = [["tight", "Will not go / needs force"], ["good", "Right"], ["loose", "Loose / sloppy"]];
+const SECTIONS = [
+  { id: "shrink", pics: [["fit_coupon_frame", "fit_coupon_frame", "the big plate: three slot blocks in front, four round sockets behind"]],  title: "1. Shrink", how: "Caliper the big coupon plate along its two outside edges.",
+    items: [{ id: "len", name: "Long edge", sub: "nominal 152.00", type: "num" },
+            { id: "wid", name: "Short edge", sub: "nominal 84.00", type: "num" }] },
+  { id: "rail", pics: [["rail_stub", "rail_stub", "a 40 mm slice of the real DIN rail"], ["fit_coupon_frame", "the three slots", "dots beside each: 1 = tightest"]],  title: "2. Rail slots", how: "Push rail_stub into each slot until it slides down to the floor. Right = firm thumb, one felt click, no white mark, no groove.",
+    warn: "Do not force the 1 dot slot. The slots have a 2 mm floor, so a jammed stub cannot be pushed out from below.",
+    items: [{ id: "s1", name: "1 dot", sub: "0.15 clearance", type: "fit" },
+            { id: "s2", name: "2 dots", sub: "0.25 clearance", type: "fit" },
+            { id: "s3", name: "3 dots", sub: "0.35 clearance", type: "fit" }] },
+  { id: "sock", pics: [["spigot_stub", "spigot_stub", "the fat half-round bar (R8)"], ["tie_stub", "tie_stub", "the thin half-round bar (R6)"]],  title: "3. Round sockets", how: "spigot_stub into each of the three big sockets, tie_stub into the small one. Right = drops in flat and lifts out with fingers.",
+    items: [{ id: "k1", name: "Socket 1", sub: "0.1 clearance", type: "fit" },
+            { id: "k2", name: "Socket 2", sub: "0.2 clearance", type: "fit" },
+            { id: "k3", name: "Socket 3", sub: "0.3 clearance", type: "fit" },
+            { id: "tie", name: "Tie socket", sub: "R6 + 0.2", type: "fit" }] },
+  { id: "foot", pics: [["foot_gauge_v2", "foot_gauge_v2", "five pockets, shown pockets-up; 1 to 5 dimples on the other face say which is which"], ["foot_pad", "foot_pad", "a production pad, 16.24 long; groove face goes in first"]],
+    title: "4. Foot gauge (v2)", how: "Caliper the pad first: a production pad is about 16.24 long. Press it groove-first into each pocket by thumb only, then tip the gauge over and shake. No pad of the old 006 / 012 / 018 trio would enter the first gauge's 16.00 x 6.00 pockets, so this one grades the pocket instead.",
+    items: [1, 2, 3, 4, 5].map((n) => ({ id: "g" + n, name: n + (n === 1 ? " dimple" : " dimples"), sub: "pocket +" + (n / 10).toFixed(2), type: "choice",
+      opts: [["tight", "Will not go in"], ["forced", "Goes in, but only forced"], ["good", "In by thumb, survives the shake"], ["loose", "Falls out on the shake"]] })) },
+  { id: "pilot", pics: [["pilot_block", "pilot_block", "a slice of the frame's post: two screw pilots inside the gasket pocket"]],  title: "5. Pilot block", how: "Drive a real M3x16 countersunk screw by hand, firm two fingers.",
+    items: [{ id: "head", name: "Screw head", type: "choice", opts: [["proud", "Stands proud"], ["good", "Flush to 0.7 below"], ["deep", "Deeper than 0.7"]] },
+            { id: "tip", name: "Tip sticking out the far side", sub: "8.6 or less, else the buttress screws become M3x14", type: "num" }] },
+  { id: "gland", pics: [["pilot_block", "pilot_block", "the recess is the gasket pocket"], ["rail_pad", "rail_pad", "the TPU gasket"], ["rail_stub", "rail_stub", "goes over the gasket, screws through its two holes"]],  title: "6. Gasket stack", how: "rail_pad into the pilot block's pocket, rail_stub over it, two M3x16 driven alternately.",
+    items: [{ id: "feeler", name: "0.05 feeler beside the pad", type: "choice", opts: [["good", "Does not enter"], ["bad", "Enters"]] },
+            { id: "lift", name: "Back one screw out a turn", type: "choice", opts: [["good", "The web lifts"], ["bad", "Nothing moves"]] }] },
+  { id: "ladder", pics: [["ladder_station_stub", "ladder_station_stub", "the first 64 mm of the real deck ladder; the toothed strips are the board shelf"]],  title: "7. Ladder station stub", how: "Real breadboard on the shelf.",
+    items: [{ id: "rock", name: "Board on the shelf", type: "choice", opts: [["good", "Sits flat, no rock"], ["bad", "Rocks"]] },
+            { id: "strip", name: "0.1 feeler along both strips", type: "choice", opts: [["good", "Passes full length"], ["bad", "Binds somewhere"]] },
+            { id: "endpilot", name: "Extra: an M3x12 into the stub's end pilot", sub: "the software test fit predicts this hole is partly blocked beyond 3 mm deep",
+              type: "choice", optional: true, opts: [["good", "Drives in clean, full depth"], ["bad", "Binds or veers after a few mm"], ["skip", "Did not try"]] }] },
+  { id: "caps", pics: [["rail_cap_615", "rail_cap (615 / 625 / 635)", "three of these, magnet pockets underneath"]],  title: "8. Rail caps", how: "Press two magnets into each cap. Right = starts by thumb, seats with a tool, holds an inverted shake.",
+    items: [["615", "6.15"], ["625", "6.25"], ["635", "6.35"]].map(([s, d]) => ({ id: "c" + s, name: "Cap " + s, sub: d + " pocket", type: "choice",
+      opts: [["tight", "Will not start by thumb"], ["good", "Thumb start, tool seat, holds"], ["loose", "Magnet falls out"]] })) },
+];
+
+let values = {};
+const $ = (s) => document.querySelector(s);
+const key = (sec, it) => sec.id + "." + it.id;
+
+// ---- build the page ---------------------------------------------------------
+for (const sec of SECTIONS) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h2>${sec.title}</h2>` +
+    (sec.pics ? `<div class="pics">${sec.pics.map(([f, n, c]) => `<figure><img src="img/part_${f}.png" alt="${n}" loading="lazy"><figcaption><b>${n}</b> ${c}</figcaption></figure>`).join("")}</div>` : "") +
+    `<p class="how">${sec.how}</p>` + (sec.warn ? `<p class="how warn">${sec.warn}</p>` : "");
+  for (const it of sec.items) {
+    const k = key(sec, it), row = document.createElement("div");
+    row.className = "item";
+    row.innerHTML = `<div class="name">${it.name}${it.sub ? `<small>${it.sub}</small>` : ""}</div>`;
+    if (it.type === "num") {
+      const inp = document.createElement("input");
+      inp.className = "num"; inp.inputMode = "decimal"; inp.placeholder = "mm"; inp.dataset.k = k;
+      inp.addEventListener("change", () => { const v = parseFloat(inp.value); if (isNaN(v)) delete values[k]; else values[k] = v; changed(); });
+      row.append(inp);
+    } else {
+      const box = document.createElement("div");
+      box.className = "opts";
+      for (const [val, label] of (it.type === "fit" ? FIT3 : it.opts)) {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = label; b.dataset.k = k; b.dataset.v = val;
+        b.addEventListener("click", () => { if (values[k] === val) delete values[k]; else values[k] = val; changed(); });
+        box.append(b);
+      }
+      row.append(box);
+    }
+    card.append(row);
+  }
+  const note = document.createElement("textarea");
+  note.placeholder = "Notes for this test (optional)"; note.dataset.k = sec.id + ".note";
+  note.addEventListener("change", () => { if (note.value.trim()) values[note.dataset.k] = note.value.trim(); else delete values[note.dataset.k]; changed(); });
+  card.append(note);
+  $("#sections").append(card);
+}
+
+function paint() {
+  for (const b of document.querySelectorAll(".opts button")) b.setAttribute("aria-pressed", values[b.dataset.k] === b.dataset.v);
+  for (const i of document.querySelectorAll("input.num, textarea")) if (document.activeElement !== i) i.value = values[i.dataset.k] ?? "";
+}
+
+// ---- what the answers decide ------------------------------------------------
+// The winner of a graded trio is the TIGHTEST candidate marked right: a fit
+// that works with less clearance is the better joint.
+function winner(sec, ids, labels) {
+  const got = ids.map((id) => values[sec + "." + id]);
+  if (got.some((g) => g === undefined)) return null;
+  const i = got.indexOf("good");
+  return i < 0 ? { none: true, got } : { value: labels[i] };
+}
+
+function derive() {
+  const rows = [], d = {};
+  const add = (k, note, v, state) => rows.push({ k, note, v, state });
+  const trio = (label, note, name, sec, ids, labels, order) => {
+    const w = winner(sec, ids, labels);
+    if (w === null) return add(label, note, "waiting", "wait");
+    if (w.none) { d[name] = null; return add(label, "no candidate was right: " + w.got.join(" / ") + " -- " + order, "none", "fail"); }
+    d[name] = w.value; add(label, note, w.value, "pass");
+  };
+
+  const L = values["shrink.len"], W = values["shrink.wid"];
+  if (typeof L === "number" && typeof W === "number") {
+    const sl = (152 - L) / 152, sw = (84 - W) / 84, loss = Math.max(sl, sw) * 288;
+    d.shrink_pct = { length: +(sl * 100).toFixed(3), width: +(sw * 100).toFixed(3) };
+    d.span_loss_288 = +loss.toFixed(2);
+    add("Shrink", "over 1.0 mm across the 288 span and ENGAGE changes before the ladder",
+        `${(sl * 100).toFixed(2)}% / ${(sw * 100).toFixed(2)}% = ${loss.toFixed(2)} mm`, Math.abs(loss) <= 1.0 ? "pass" : "fail");
+  } else add("Shrink", "needs both edges", "waiting", "wait");
+
+  trio("RAIL_FIT_MORTISE", "tightest slot that slid home with one click", "RAIL_FIT_MORTISE", "rail", ["s1", "s2", "s3"], [0.15, 0.25, 0.35], "all tight = open the fit, all loose = close it");
+  trio("Socket clearance", "tightest socket the bar drops into flat", "SOCKET_CLEARANCE", "sock", ["k1", "k2", "k3"], [0.1, 0.2, 0.3], "all tight = open the fit, all loose = close it");
+  const tie = values["sock.tie"];
+  add("Tie socket (R6 + 0.2)", "", tie === undefined ? "waiting" : tie === "good" ? "ok" : tie, tie === undefined ? "wait" : tie === "good" ? "pass" : "fail");
+  {
+    // Any answered pocket can decide it: the winner is the SMALLEST pocket marked
+    // right, and it only needs the pocket below it to have been tried and failed.
+    const got = [1, 2, 3, 4, 5].map((n) => values["foot.g" + n]);
+    const i = got.indexOf("good");
+    if (i < 0) add("Foot pocket growth", got.some((g) => g !== undefined) ? "no pocket marked right yet" : "needs the gauge", "waiting", "wait");
+    else {
+      d.FOOT_POCKET_OVER = +((i + 1) / 10).toFixed(2);
+      add("Foot pocket growth", "every 16.00 x 6.00 foot pocket in the CAD grows by this on length and width; FOOT_FIT and the printed pads stay as they are",
+          "+" + d.FOOT_POCKET_OVER.toFixed(2) + " mm", i === 0 || got[i - 1] !== undefined ? "pass" : "wait");
+    }
+  }
+  trio("MAGNET_FIT", "tightest cap that starts by thumb and holds", "MAGNET_FIT", "caps", ["c615", "c625", "c635"], [6.15, 6.25, 6.35], "all tight = open the pocket, all loose = close it");
+
+  const simple = [["pilot.head", "Countersunk head", "never proud"], ["gland.feeler", "Gasket squeeze", "0.05 feeler must not enter"],
+                  ["gland.lift", "Gasket preload", "the web must lift when a screw backs out"], ["ladder.rock", "Breadboard shelf", "no rock"],
+                  ["ladder.strip", "Breadboard strips", "0.1 feeler passes both"]];
+  for (const [k, label, note] of simple) {
+    const v = values[k];
+    add(label, note, v === undefined ? "waiting" : v === "good" ? "ok" : v, v === undefined ? "wait" : v === "good" ? "pass" : "fail");
+  }
+  const tip = values["pilot.tip"];
+  add("Screw tip protrusion", "8.6 or less", typeof tip === "number" ? tip.toFixed(2) + " mm" : "waiting", typeof tip !== "number" ? "wait" : tip <= 8.6 ? "pass" : "fail");
+  const ep = values["ladder.endpilot"];
+  if (ep && ep !== "skip") add("Ladder end pilot (software finding)", ep === "bad" ? "confirmed in plastic: fix cad/frame.py before plate 07" : "prediction NOT confirmed: re-check the mesh finding",
+                                 ep === "bad" ? "blocked" : "clean", ep === "bad" ? "fail" : "pass");
+  return { rows, d };
+}
+
+// ---- save -------------------------------------------------------------------
+const REQUIRED = SECTIONS.flatMap((s) => s.items.filter((i) => !i.optional).map((i) => key(s, i)));
+let timer;
+function changed() {
+  paint();
+  const { rows, d } = derive();
+  $("#verdict").innerHTML = rows.map((r) => `<tr><td><b>${r.k}</b><br><span style="color:var(--dim)">${r.note}</span></td><td class="v ${r.state}">${r.v}</td></tr>`).join("");
+  const done = REQUIRED.filter((k) => k in values).length;
+  $("#count").textContent = `${done} of ${REQUIRED.length}`;
+  try { localStorage.setItem("fit02", JSON.stringify(values)); } catch (e) {}
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    try {
+      const r = await fetch("/save?sheet=plate2", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plate: 2, saved_at: new Date().toISOString(),
+          answered: done, required: REQUIRED.length, complete: done === REQUIRED.length, values, derived: d }) });
+      $("#save").textContent = r.ok ? "Saved to out/plate2_pla/fit_results.json at " + new Date().toLocaleTimeString() : "Save failed (" + r.status + ") -- answers are kept in this browser.";
+    } catch (e) { $("#save").textContent = "Server not reachable -- answers are kept in this browser."; }
+  }, 400);
+}
+
+(async () => {
+  try { const r = await fetch("/data?sheet=plate2"); const j = await r.json(); if (j && j.values) values = j.values; } catch (e) {}
+  if (!Object.keys(values).length) try { values = JSON.parse(localStorage.getItem("fit02") || "{}"); } catch (e) {}
+  paint();
+  const { rows } = derive();
+  $("#verdict").innerHTML = rows.map((r) => `<tr><td><b>${r.k}</b><br><span style="color:var(--dim)">${r.note}</span></td><td class="v ${r.state}">${r.v}</td></tr>`).join("");
+  $("#count").textContent = `${REQUIRED.filter((k) => k in values).length} of ${REQUIRED.length}`;
+})();
+</script>
+</body>
+</html>

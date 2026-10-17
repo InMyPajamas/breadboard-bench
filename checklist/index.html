@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Print Check">
+<title>Print Check</title>
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --ink: #1b1b1b; --muted: #77726b; --line: #e4e0d9;
+    --done: #2f8f5b; --gate: #b5561c; --gate-bg: #fbeee4;
+    --tpu: #7a4bc2; --pla: #2f6fc4; --petg: #c47a1f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+      --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --card: #22211f; --ink: #f1eee8; --muted: #9b968e; --line: #34322e;
+    --done: #4cc184; --gate: #f0935a; --gate-bg: #3a2a1f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 19px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 60px max(16px, env(safe-area-inset-left));
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 4px 0 18px; letter-spacing: -0.02em; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 12px; overflow: hidden; }
+  summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+    padding: 18px 18px; min-height: 68px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  .num { font-weight: 700; font-size: 22px; min-width: 38px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .name { font-weight: 600; font-size: 21px; flex: 1; }
+  .chip { font-size: 13px; font-weight: 700; color: #fff; padding: 4px 9px; border-radius: 99px; letter-spacing: 0.04em; }
+  .TPU { background: var(--tpu); } .PLA { background: var(--pla); } .PETG { background: var(--petg); }
+  .count { font-size: 16px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+  details.complete { border-color: var(--done); }
+  details.complete .count { color: var(--done); font-weight: 700; }
+  details.complete .num { color: var(--done); }
+
+  ul { list-style: none; margin: 0; padding: 0 0 6px; border-top: 1px solid var(--line); }
+  li label {
+    display: flex; align-items: center; gap: 16px; padding: 14px 18px; min-height: 60px; cursor: pointer;
+    border-bottom: 1px solid var(--line);
+  }
+  li:last-child label { border-bottom: 0; }
+  input[type=checkbox] {
+    appearance: none; -webkit-appearance: none; flex: none;
+    width: 32px; height: 32px; border: 2.5px solid var(--muted); border-radius: 9px; margin: 0; display: grid; place-content: center;
+  }
+  input[type=checkbox]:checked { background: var(--done); border-color: var(--done); }
+  input[type=checkbox]:checked::after { content: ""; width: 9px; height: 16px; border: solid #fff; border-width: 0 3.5px 3.5px 0; transform: translateY(-2px) rotate(45deg); }
+  input:checked + span { color: var(--muted); text-decoration: line-through; }
+  li.gate label { background: var(--gate-bg); }
+  li.gate span b { color: var(--gate); font-size: 13px; letter-spacing: 0.06em; margin-right: 6px; }
+  li.star span b { color: var(--gate); }
+
+  .reset { display: block; margin: 8px 18px 14px auto; background: none; border: 1px solid var(--line); color: var(--muted); font: inherit; font-size: 15px; padding: 8px 14px; border-radius: 10px; }
+  .reset.armed { color: #fff; background: var(--gate); border-color: var(--gate); }
+  .section { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 26px 4px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Print Check</h1>
+  <div id="app"></div>
+</main>
+
+<script>
+// "!" prefix = gate (must be true before printing). "*" prefix = don't-forget manual step.
+const EVERY = ["Plate washed", "Nozzle 0.4 (Studio + printer)", "0.20 mm layers", "Overrides match PLATES.md", "Preview looks clean", "Watch first layer"];
+
+const CARDS = [
+  { section: "Printer" },
+  { id: "lube", num: "XYZ", name: "Rails + lead screws", items: [
+    "Filament unloaded, plate out",
+    "!Power OFF + unplugged",
+    "X rail: wipe both ends, oil top + bottom",
+    "Slide toolhead end to end, wipe drips",
+    "Y rods ×2: wipe, oil, push gantry",
+    "Z rods ×3: wipe, then OIL",
+    "Lead screws ×3: wipe, then GREASE",
+    "Power on, jog bed full travel ×3",
+    "Wipe grease that squeezed out",
+    "*Assistant → Go to maintain → mark done",
+    "Wash plate while it's out",
+  ]},
+  { id: "head", num: "TH", name: "Toolhead check", items: [
+    "Extruder gear: no dust, no wear",
+    "Cutter blade sharp (3–5 spools)",
+    "Silicone sock tight, not torn",
+    "Purge wiper silicone intact",
+    "Cold pull if ~5 spools since last",
+    "Brush duct + aux fan",
+  ]},
+
+  { section: "Setup" },
+  { id: "once", num: "✓", name: "First open in Studio", items: [
+    "01 → 15 objects in a row",
+    "06 → 5 walls · 25% · 5 mm brim",
+    "04 → rear_tie has own brim",
+  ]},
+  { id: "hw", num: "⚙", name: "Hardware ready", items: [
+    "Calipers",
+    "M3×12 socket head",
+    "M3×16 countersunk (maybe ×14)",
+    "M3 square nuts",
+    "7 × N52 magnets (Ø6×2)",
+  ]},
+
+  { section: "Plates" },
+  { id: "p01", num: "01", name: "TPU pads", mat: "TPU", heaterOff: true, items: [
+    "*Outermost AMS slot",
+    "*No brim",
+    "After: measure square first",
+  ]},
+  { id: "p02", num: "02", name: "PLA gauges", mat: "PLA", heaterOff: true, items: [
+    "*Write down every measurement",
+  ]},
+  { id: "p03", num: "03", name: "PETG gauges", mat: "PETG", items: [
+    "*Paint 2 dabs per clip channel",
+    "Relief slots NOT filled",
+  ]},
+  { id: "p04", num: "04", name: "Left frame + tie", mat: "PLA", heaterOff: true, items: [
+    "!Stages 1–3 measured",
+    "Check 3 override regimes",
+  ]},
+  { id: "p05", num: "05", name: "Right frame", mat: "PLA", heaterOff: true, items: [
+    "!Plate 04 passed",
+    "File is end_frame_r",
+  ]},
+  { id: "p06", num: "06", name: "DIN rail", mat: "PLA", heaterOff: true, items: [
+    "!Both frames accept stub",
+    "5 walls · 25% · 5 mm brim",
+  ]},
+  { id: "p07", num: "07", name: "Deck ladder", mat: "PLA", heaterOff: true, items: [
+    "Brim on",
+    "After: shoulders = 288.00",
+  ]},
+  { id: "p07b", num: "07b", name: "14 TPU feet", mat: "TPU", heaterOff: true, items: [
+    "!FOOT_FIT confirmed",
+    "*Outermost AMS slot",
+  ]},
+  { id: "p08", num: "08", name: "Rear tray", mat: "PLA", heaterOff: true, items: [
+    "Part fan 100%",
+    "After: csk ≥ 7.75 mm proud",
+  ]},
+  { id: "p09", num: "09", name: "PETG modules", mat: "PETG", items: [
+    "*Pause at Z 3.2",
+    "Layer 16: pockets open, empty",
+    "*Paint dabs: rail_bin + posts",
+    "7 magnets ready",
+    "One display post first",
+  ]},
+];
+
+const KEY = "breadboard-print-check-v2";   // bumped: rows were inserted, so v1 ticks would land on the wrong items
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+const app = document.getElementById("app");
+
+for (const c of CARDS) {
+  if (c.section) {
+    const h = document.createElement("div");
+    h.className = "section"; h.textContent = c.section;
+    app.append(h);
+    continue;
+  }
+  const items = c.mat
+    ? [`Filament: ${c.mat === "TPU" ? "TPU for AMS" : c.mat}`, ...(c.heaterOff ? ["Chamber heater OFF"] : []), ...EVERY.slice(0, 3), ...c.items, ...EVERY.slice(3)]
+    : c.items;
+
+  const d = document.createElement("details");
+  d.id = c.id;
+  if (state[c.id + ":open"]) d.open = true;
+  d.addEventListener("toggle", () => { state[c.id + ":open"] = d.open; save(); });
+
+  const s = document.createElement("summary");
+  s.innerHTML = `<span class="num">${c.num}</span><span class="name">${c.name}</span>` +
+    (c.mat ? `<span class="chip ${c.mat}">${c.mat}</span>` : "") + `<span class="count"></span>`;
+  d.append(s);
+
+  const ul = document.createElement("ul");
+  items.forEach((raw, i) => {
+    const gate = raw.startsWith("!"), star = raw.startsWith("*");
+    const text = gate || star ? raw.slice(1) : raw;
+    const k = `${c.id}:${i}`;
+    const li = document.createElement("li");
+    if (gate) li.className = "gate";
+    if (star) li.className = "star";
+    li.innerHTML = `<label><input type="checkbox"><span>${gate ? "<b>GATE</b>" : star ? "<b>★</b> " : ""}${text}</span></label>`;
+    const box = li.querySelector("input");
+    box.checked = !!state[k];
+    box.addEventListener("change", () => { state[k] = box.checked; save(); update(); });
+    ul.append(li);
+  });
+  d.append(ul);
+
+  const r = document.createElement("button");
+  r.className = "reset"; r.textContent = "Reset";
+  let timer;
+  r.addEventListener("click", () => {
+    if (!r.classList.contains("armed")) {
+      r.classList.add("armed"); r.textContent = "Tap again to reset";
+      timer = setTimeout(() => { r.classList.remove("armed"); r.textContent = "Reset"; }, 2500);
+      return;
+    }
+    clearTimeout(timer);
+    items.forEach((_, i) => delete state[`${c.id}:${i}`]);
+    save();
+    ul.querySelectorAll("input").forEach(b => b.checked = false);
+    r.classList.remove("armed"); r.textContent = "Reset";
+    update();
+  });
+  d.append(r);
+
+  function update() {
+    const done = items.filter((_, i) => state[`${c.id}:${i}`]).length;
+    s.querySelector(".count").textContent = `${done}/${items.length}`;
+    d.classList.toggle("complete", done === items.length);
+  }
+  update();
+  app.append(d);
+}
+</script>
+</body>
+</html>

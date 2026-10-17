@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledge gauge 02k</title>
+<style>
+  :root { --bg:#f4f3ef; --card:#fff; --ink:#1b1c1f; --dim:#676a72; --line:#dcdad3; --pick:#1d4ed8; --pickink:#fff;
+          --good:#15803d; --bad:#b91c1c; --warn:#a16207; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131417; --card:#1d1f24; --ink:#eceae4; --dim:#9a9da6; --line:#30333b; --pick:#3b82f6; --pickink:#fff;
+            --good:#4ade80; --bad:#f87171; --warn:#facc15; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.45 -apple-system, system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--dim); font-size:14px; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:0 0 16px; }
+  .card h2 { margin:0 0 2px; font-size:18px; }
+  .card .how { margin:4px 0 12px; color:var(--dim); font-size:15px; }
+  .warn { color:var(--warn); font-weight:600; }
+  .item { border-top:1px solid var(--line); padding:12px 0 4px; }
+  .item .name { font-weight:600; margin-bottom:8px; }
+  .item .name small { font-weight:400; color:var(--dim); margin-left:6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:8px; }
+  .opts button { flex:1 1 150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+                 background:transparent; color:var(--ink); font:inherit; font-size:15px; text-align:left; }
+  .opts button[aria-pressed="true"] { background:var(--pick); border-color:var(--pick); color:var(--pickink); font-weight:600; }
+  input.num { width:150px; min-height:52px; padding:8px 12px; border-radius:11px; border:1.5px solid var(--line);
+              background:transparent; color:var(--ink); font:inherit; font-size:19px; }
+  textarea { width:100%; min-height:60px; margin-top:10px; padding:10px; border-radius:11px; border:1.5px solid var(--line);
+             background:transparent; color:var(--ink); font:inherit; font-size:15px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  td { padding:7px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  td.v { text-align:right; font-weight:600; white-space:nowrap; }
+  .pass { color:var(--good); } .fail { color:var(--bad); } .wait { color:var(--dim); font-weight:400; }
+  .pics { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+  .pics figure { flex:1 1 200px; max-width:320px; margin:0; }
+  .pics img { width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
+  .pics figcaption { font-size:13px; color:var(--dim); margin-top:4px; }
+  .pics figcaption b { color:var(--ink); }
+  #save { color:var(--dim); font-size:14px; margin:0 0 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ledge gauge <span id="count" style="font-weight:400;color:var(--dim);font-size:15px"></span></h1>
+  <p>Plate 02k. The recessed deck in plastic. Tap what happened. Saves as you go. This decides RECESS and clears frame.py.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>What this plate is asking</h2>
+    <div class="pics">
+      <figure><img src="renders/story/ledge_gauge.png" alt="ledge gauge" loading="lazy"><figcaption><b>the gauge</b> the first 120 mm of the deck: both rails, ledges cut down 1.2, datum pocket and peg, a slot at the second station, the plate at 52</figcaption></figure>
+      <figure><img src="renders/story/ledge_seated.png" alt="board seated" loading="lazy"><figcaption><b>seated</b> rim on the 0.6 shelf, tape hanging over the 0.8 relief, nothing above the rail crown</figcaption></figure>
+    </div>
+    <p class="how">The teeth are gone. The ledge that carried them stays where it was, but its top is cut down 1.2 so the board sinks into it and its own dovetail cleats do the locating: the first tab drops into an exact <b>pocket</b> (4.37) near the left end, the second into a <b>slot</b> (10.37) further along, and the notch across from the pocket drops over a <b>peg</b> (3.8) on the far rail. The board rests on a 0.6 <b>rim shelf</b>, never on its tape.</p>
+    <p class="how warn">Drop the full board's LEFT end straight down. Do not slide it along the rails; a slide tests friction, a drop tests the pockets.</p>
+  </div>
+  <div id="sections"></div>
+  <div class="card">
+    <h2>What the plate decided</h2>
+    <p class="how">Filled in from your answers. RECESS is the one number still open in PLAN.md; everything else here confirms a constant the gauges already settled.</p>
+    <table id="verdict"></table>
+  </div>
+  <p id="save"></p>
+</main>
+
+<script>
+const SECTIONS = [
+  { id: "drop", title: "1. Drop it on",
+    pics: [["renders/story/ledge_pocket.png", "the pocket", "two 3.5 blocks of un-cut ledge flank the tab; the gap between them is the pocket"],
+           ["renders/story/ledge_peg.png", "the peg", "3.8 wide, 1.3 proud of the rear shoulder, into the notch across from the pocket"]],
+    how: "Left end first, straight down. All three have to land at once: first tab in the pocket, second tab somewhere in the slot, notch over the peg.",
+    items: [
+      { id: "pocket", name: "First tab into the pocket", sub: "the exact one, 4.37 wide, near the left end", type: "choice",
+        opts: [["good", "Drops in clean"], ["forced", "Goes in with a press"], ["no", "Will not enter"]] },
+      { id: "slot", name: "Second tab into the slot", sub: "10.37 wide, so the spacing does not matter", type: "choice",
+        opts: [["good", "Drops in clean"], ["forced", "Goes in with a press"], ["no", "Misses the slot entirely"]] },
+      { id: "peg", name: "Notch over the peg", sub: "far rail, opposite the pocket", type: "choice",
+        opts: [["good", "Drops over clean"], ["forced", "Needs a press"], ["no", "Peg will not enter the notch"]] }] },
+
+  { id: "rest", title: "2. Where it rests",
+    how: "With the board down. Sight along the rail from the end and press each corner.",
+    warn: "The rim is only 0.6 wide before the tape starts. If the board is standing on tape the relief floor is too high, not the gap.",
+    items: [
+      { id: "rim", name: "Rim on the shelf, both sides", type: "choice",
+        opts: [["good", "Sits flat, no rock"], ["rock", "Rocks corner to corner"], ["tape", "Standing on its tape, not the rim"]] },
+      { id: "relief", name: "Tape clear of the relief floor and the plate", sub: "there should be daylight under the sticky edge", type: "choice",
+        opts: [["clear", "Clear all along"], ["touch", "Touches somewhere"], ["unsure", "Cannot see"]] },
+      { id: "crown", name: "Anything standing above the rail's crown?", sub: "blocks, shoulder or peg reading as a wall", type: "choice",
+        opts: [["none", "Nothing, the rails read as plain half-rounds"], ["wall", "Something stands proud"]] }] },
+
+  { id: "hold", title: "3. Play and stops",
+    how: "Still seated. The design locates by the pocket and peg and holds by gravity; it is not meant to resist a straight lift.",
+    items: [
+      { id: "across", name: "Push the board across the rails", sub: "designed play is 0.4 total, the 55.14 gauge's clearance", type: "choice",
+        opts: [["tight", "No play at all, it is pinched"], ["good", "A whisker of play, about 0.4"], ["loose", "Rattles"]] },
+      { id: "along", name: "Shove it along the rail", type: "choice",
+        opts: [["wall", "Stops dead on the pocket wall"], ["friction", "Stops, but on friction"], ["slides", "Slides along"]] },
+      { id: "lift", name: "Lift one end straight up", type: "choice",
+        opts: [["free", "Comes straight out (expected)"], ["catch", "Catches on something"]] }] },
+
+  { id: "engage", title: "4. Engagement, the RECESS decision",
+    how: "Rock the board hard side to side and end to end while it is seated. The tab is 1.41 proud and the pocket is 1.2 deep, so the question is whether 1.2 is enough bite.",
+    warn: "This is the one open number. If a tab or the peg climbs out under a rock, RECESS goes to 1.5 and the relief floor moves to z 0 between the stubs. Not below 1.2.",
+    items: [
+      { id: "tab", name: "Does the first tab stay in its pocket?", type: "choice",
+        opts: [["stays", "Stays put"], ["climbs", "Climbs out under a rock"]] },
+      { id: "peg", name: "Does the peg stay in the notch?", type: "choice",
+        opts: [["stays", "Stays put"], ["climbs", "Climbs out under a rock"]] },
+      { id: "vs", name: "Against cradle gauge 02i", sub: "the one-station version this replaces", type: "choice", optional: true,
+        opts: [["better", "Clearly better"], ["same", "About the same"], ["worse", "Worse"], ["skip", "Did not compare"]] }] },
+];
+
+let values = {};
+const $ = (s) => document.querySelector(s);
+const key = (sec, it) => sec.id + "." + it.id;
+
+for (const sec of SECTIONS) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h2>${sec.title}</h2>` +
+    (sec.pics ? `<div class="pics">${sec.pics.map(([f, n, c]) => `<figure><img src="${f}" alt="${n}" loading="lazy"><figcaption><b>${n}</b> ${c}</figcaption></figure>`).join("")}</div>` : "") +
+    `<p class="how">${sec.how}</p>` + (sec.warn ? `<p class="how warn">${sec.warn}</p>` : "");
+  for (const it of sec.items) {
+    const k = key(sec, it), row = document.createElement("div");
+    row.className = "item";
+    row.innerHTML = `<div class="name">${it.name}${it.sub ? `<small>${it.sub}</small>` : ""}</div>`;
+    const box = document.createElement("div");
+    box.className = "opts";
+    for (const [val, label] of it.opts) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label; b.dataset.k = k; b.dataset.v = val;
+      b.addEventListener("click", () => { if (values[k] === val) delete values[k]; else values[k] = val; changed(); });
+      box.append(b);
+    }
+    row.append(box);
+    card.append(row);
+  }
+  const note = document.createElement("textarea");
+  note.placeholder = "Notes for this test (optional)"; note.dataset.k = sec.id + ".note";
+  note.addEventListener("change", () => { if (note.value.trim()) values[note.dataset.k] = note.value.trim(); else delete values[note.dataset.k]; changed(); });
+  card.append(note);
+  $("#sections").append(card);
+}
+
+function paint() {
+  for (const b of document.querySelectorAll(".opts button")) b.setAttribute("aria-pressed", values[b.dataset.k] === b.dataset.v);
+  for (const i of document.querySelectorAll("textarea")) if (document.activeElement !== i) i.value = values[i.dataset.k] ?? "";
+}
+
+// ---- what the answers decide ------------------------------------------------
+// Every row is a constant PLAN.md already carries; the sheet confirms or sends
+// it back. RECESS is the only one with two live values, and its rule is written
+// here rather than left to whoever reads the notes: any climb-out means 1.5.
+function derive() {
+  const rows = [], d = {};
+  const v = (k) => values[k];
+  const add = (k, note, val, state) => rows.push({ k, note, v: val, state });
+  const tri = (k, okNote, badNote) => {
+    const x = v(k);
+    return x === undefined ? ["waiting", "wait", null] : x === "good" ? ["drops in", "pass", okNote] : x === "forced" ? ["forced", "fail", badNote] : ["no", "fail", badNote];
+  };
+
+  const [pv, ps, pn] = tri("drop.pocket", "POCKET_W 4.37 with FIT 0.30 holds on the real ledge", "the pocket is tighter on the ledge than on the strip: open FIT by 0.1 and recut");
+  add("POCKET_W 4.37", pn ?? "the exact pocket, proven on the slotted strip", pv, ps);
+  const [sv, ss, sn] = tri("drop.slot", "the slot absorbs the spacing; STATION_SPAN stays a non-constant", "the second tab is outside 62 to 68, which contradicts 02j: recheck the drop was straight");
+  add("Slot 10.37", sn ?? "second station, SLOT_REACH 3.0 each way", sv, ss);
+  const [gv, gs, gn] = tri("drop.peg", "PEG_W 3.8 x PEG_D 1.3 enters the notch from the shoulder", "the peg sits on a shoulder now, not a bar edge: check its height, 1.3, against the notch's 1.60");
+  add("PEG_W 3.8", gn ?? "on the rear shoulder, opposite the pocket", gv, gs);
+
+  const rim = v("rest.rim");
+  add("RIM 0.6 shelf", rim === undefined ? "the small rest the user asked for" : rim === "good" ? "the board carries on its rim" : rim === "rock" ? "rocking: a block or the peg is proud, or the shelf is not flat" : "on the tape: TAPE_SET is wider than 0.6, remeasure it",
+      rim === undefined ? "waiting" : rim === "good" ? "flat" : rim, rim === undefined ? "wait" : rim === "good" ? "pass" : "fail");
+  const rel = v("rest.relief");
+  add("RELIEF_Z 0.8", rel === undefined ? "floor under the tape zone" : rel === "clear" ? "the tape never touches" : rel === "touch" ? "TAPE_T is more than 0.6 somewhere, or the plate is high" : "look again with a light behind it",
+      rel === undefined ? "waiting" : rel, rel === undefined ? "wait" : rel === "clear" ? "pass" : "fail");
+  const crown = v("rest.crown");
+  add("Nothing above z 3", crown === undefined ? "the user's rule: no wall higher than the half rails" : crown === "none" ? "the ledge reads as the old ledge" : "a build error, not the design: find which feature",
+      crown === undefined ? "waiting" : crown === "none" ? "clean" : "wall", crown === undefined ? "wait" : crown === "none" ? "pass" : "fail");
+
+  const across = v("hold.across");
+  if (across !== undefined) { d.PLAY_OK = across === "good"; }
+  add("PLAY 0.2 per side", across === undefined ? "RAIL_GAP 55.14 over the 54.74 board" : across === "good" ? "the 02i clearance carries over" : across === "tight" ? "the blocks or shoulder stand inboard of FACE_Y; check the print, not the number" : "more than 0.4: the shoulder is short of FACE_Y",
+      across === undefined ? "waiting" : across === "good" ? "0.4" : across, across === undefined ? "wait" : across === "good" ? "pass" : "fail");
+  const along = v("hold.along");
+  add("Indexing", along === undefined ? "the pocket wall is the stop" : along === "wall" ? "the pocket indexes the board" : "the pocket is not doing the work",
+      along === undefined ? "waiting" : along, along === undefined ? "wait" : along === "wall" ? "pass" : "fail");
+
+  const tab = v("engage.tab"), peg = v("engage.peg");
+  if (tab !== undefined && peg !== undefined) {
+    const climbs = tab === "climbs" || peg === "climbs";
+    d.RECESS = climbs ? 1.5 : 1.2;
+    d.BOARD_Z = +(3.0 - d.RECESS).toFixed(2);
+    d.RELIEF_Z = climbs ? 0.0 : 0.8;
+    add("RECESS", climbs ? "something climbed out: go the 1.5 route, relief to z 0 between the stubs, plates into the bay gaps at full 3.0" : "1.2 holds: relief and plates stay at 0.8, four layers", d.RECESS.toFixed(1) + " mm", climbs ? "fail" : "pass");
+    add("BOARD_Z", "board underside = LEDGE_Z - RECESS", d.BOARD_Z.toFixed(1) + " mm", "pass");
+  } else add("RECESS", "1.2 in the gauge; 1.5 if a tab or the peg climbs out", "waiting", "wait");
+
+  const allGood = ps === "pass" && ss === "pass" && gs === "pass" && rim === "good" && rel === "clear" && crown === "none" && across === "good" && along === "wall" && tab !== undefined && peg !== undefined;
+  if (allGood) add("Verdict", d.RECESS === 1.2 ? "the design holds as drawn: rewrite deck_rail in frame.py with RECESS 1.2" : "the design holds but wants more bite: rewrite deck_rail with the 1.5 route", "GO", "pass");
+  return { rows, d };
+}
+
+const REQUIRED = SECTIONS.flatMap((s) => s.items.filter((i) => !i.optional).map((i) => key(s, i)));
+let timer;
+function render() {
+  const { rows, d } = derive();
+  $("#verdict").innerHTML = rows.map((r) => `<tr><td><b>${r.k}</b><br><span style="color:var(--dim)">${r.note}</span></td><td class="v ${r.state}">${r.v}</td></tr>`).join("");
+  $("#count").textContent = `${REQUIRED.filter((k) => k in values).length} of ${REQUIRED.length}`;
+  return d;
+}
+function changed() {
+  paint();
+  const d = render();
+  const done = REQUIRED.filter((k) => k in values).length;
+  try { localStorage.setItem("ledge", JSON.stringify(values)); } catch (e) {}
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    try {
+      const r = await fetch("/save?sheet=ledge", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plates: ["02k"], saved_at: new Date().toISOString(),
+          answered: done, required: REQUIRED.length, complete: done === REQUIRED.length, values, derived: d }) });
+      $("#save").textContent = r.ok ? "Saved to out/plate2_pla/ledge_results.json at " + new Date().toLocaleTimeString() : "Save failed (" + r.status + ") -- answers are kept in this browser.";
+    } catch (e) { $("#save").textContent = "Server not reachable -- answers are kept in this browser."; }
+  }, 400);
+}
+
+(async () => {
+  try { const r = await fetch("/data?sheet=ledge"); const j = await r.json(); if (j && j.values) values = j.values; } catch (e) {}
+  if (!Object.keys(values).length) try { values = JSON.parse(localStorage.getItem("ledge") || "{}"); } catch (e) {}
+  paint();
+  render();
+})();
+</script>
+</body>
+</html>
