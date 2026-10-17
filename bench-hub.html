@@ -253,7 +253,16 @@
   #viewer .stage { position: relative; flex: 1; min-height: 420px; }
   #viewer .stage iframe { position: absolute; inset: 0; height: 100%; min-height: 0; }
   #viewer .stage iframe.off { visibility: hidden; pointer-events: none; }
-  #viewer .hint { font-family: var(--mono); font-size: 11.5px; color: var(--steel); padding-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+  #viewer .hint { font-family: var(--mono); font-size: 11.5px; color: var(--steel); padding-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; align-items: center; }
+  #viewer .fullscreen { font-family: var(--display); font-size: 15px; letter-spacing: .05em; border: 1px solid var(--accent); border-radius: 4px; padding: 5px 12px; white-space: nowrap; }
+  /* Phones: the viewer gets most of the screen (it was a 420 px box whose
+     own layout left a ~160 px strip to spin the model in), and the page
+     around it keeps a margin to scroll by. */
+  @media (max-width: 900px) {
+    section#viewer.active { padding: 10px 12px 18px; }
+    #viewer .stage { min-height: 78svh; }
+    #viewer .variant { margin-bottom: 8px; }
+  }
   .variant {
     display: inline-flex;
     border: 1px solid var(--line);
@@ -510,8 +519,16 @@
     header, nav, section[role="tabpanel"] { padding-left: 16px; padding-right: 16px; }
     nav { margin: 6px 16px 0; }
     .ov { grid-template-columns: 1fr; }
-    .sheet { grid-template-columns: 1fr; }
+    .sheet { grid-template-columns: minmax(0, 1fr); }
     .gates { display: none; }
+    /* No sideways wobble on a phone (checked 2026-10-17 at 390 px): wide
+       tables scroll inside themselves, long file names wrap, and a plan
+       row drops its material and weight bar. */
+    #hw-table, #const-table, .sheet table { display: block; overflow-x: auto; }
+    .morph .pending code { overflow-wrap: anywhere; }
+    #plan-root summary.planrow { grid-template-columns: 28px minmax(0, 1fr) 50px 38px !important; gap: 8px !important; }
+    #plan-root summary.planrow > span:nth-child(2), #plan-root summary.planrow > span:nth-child(4) { display: none; }
+    #plan-root .planbody { padding-left: 14px !important; }
   }
 </style>
 </head>
@@ -614,6 +631,7 @@
     <iframe title="Console 3D viewer" id="vf-console" data-src="out/console-viewer.html" loading="lazy" class="off"></iframe>
   </div>
   <div class="hint">
+    <a class="fullscreen" id="viewer-full" href="out/bench-viewer.html" target="_blank" rel="noopener">Open full screen &#8599;</a>
     <span>drag to orbit &middot; parts list toggles subassemblies &middot; explode slider pulls the build apart</span>
     <span class="variant-note" id="variant-note">frame: tie seated full-length, display on two clip-on posts &mdash; current</span>
   </div>
@@ -1460,6 +1478,7 @@ python cad/build_viewer.py # the 3D viewer tab</pre>
         const on = v === b.dataset.variant;
         f.classList.toggle("off", !on);
         if (on && !f.src) f.src = f.dataset.src;
+        if (on) document.getElementById("viewer-full").href = f.dataset.src;
         // the shell re-fits its camera on resize; make sure the newly
         // shown one takes stock of its real stage
         if (on && f.contentWindow) {
@@ -1563,7 +1582,7 @@ python cad/build_viewer.py # the 3D viewer tab</pre>
       const pct = nChecks ? Math.round(100 * nDone / nChecks) : 0;
       h.push(`<details style="border:1px solid var(--line);border-left:3px solid ${col};border-radius:3px;background:var(--graphite);margin-bottom:7px">`);
       // summary: number | material | name | bar | grams | progress
-      h.push(`<summary style="cursor:pointer;padding:9px 14px;display:grid;` +
+      h.push(`<summary class="planrow" style="cursor:pointer;padding:9px 14px;display:grid;` +
         `grid-template-columns:34px 46px 1fr 92px 62px 46px;gap:12px;align-items:center;list-style:none">` +
         `<span style="font-family:var(--mono);font-size:15px;color:var(--accent-hot)">${String(s.n).padStart(2, "0")}</span>` +
         `<span style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:${col}">${esc(s.mat)}</span>` +
@@ -1572,7 +1591,7 @@ python cad/build_viewer.py # the 3D viewer tab</pre>
         `<span style="font-family:var(--mono);font-size:11.5px;color:var(--steel);text-align:right">${s.g ? s.g + " g" : "&mdash;"}</span>` +
         `<span class="pg" data-s="${key}" style="font-family:var(--mono);font-size:10.5px;text-align:right;color:${pct === 100 ? "var(--accent)" : "var(--steel)"}">${nDone}/${nChecks}</span>` +
         `</summary>`);
-      h.push(`<div style="padding:2px 16px 14px 52px;font-size:13px;color:var(--bone-dim);max-width:88ch">`);
+      h.push(`<div class="planbody" style="padding:2px 16px 14px 52px;font-size:13px;color:var(--bone-dim);max-width:88ch">`);
       h.push(`<p style="margin:0 0 12px;color:var(--bone)">${esc(s.proves)}</p>`);
       if (s.note) h.push(`<p style="margin:0 0 12px;padding:7px 10px;border-left:2px solid var(--accent);background:#1b1a18;font-size:12.5px">${esc(s.note)}</p>`);
       h.push(`<div class="eyebrow" style="margin-bottom:4px">Print</div>` +

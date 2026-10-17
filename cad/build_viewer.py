@@ -5,6 +5,7 @@ sidecar mesh file -- so it opens straight off disk, off a phone, or out of a
 published artifact with identical behaviour.
 """
 
+import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -18,14 +19,11 @@ OUT = os.path.join(HERE, "..", "out")
 CONSOLE_SWAPS = [
     ("<p>Skeletal frame with a printed DIN rail</p>",
      "<p>Moulded console with a printed DIN rail</p>"),
-    ('<div class="rev">362 &times; 190 &times; 154 MM &middot; '
-     "18 RIGID + 18 TPU</div>",
-     '<div class="rev">300 &times; 134 &times; 91 MM &middot; '
-     "ONE MOULDING + RAIL</div>"),
-    ('<div><span class="k">envelope  </span><b>362 &times; 190 &times; 154'
-     "</b> mm</div>",
-     '<div><span class="k">envelope  </span><b>300 &times; 134 &times; 91'
-     "</b> mm</div>"),
+    # the envelope itself is no longer typed: __ENV__ is filled from each
+    # variant's own data (2026-10-17, the frame's read 154 high for a month
+    # after the screen went on)
+    ('<div class="rev">__ENV__ MM &middot; 18 RIGID + 18 TPU</div>',
+     '<div class="rev">__ENV__ MM &middot; ONE MOULDING + RAIL</div>'),
     ('<div><span class="k">filament  </span><b>347</b> cm&sup3; &rarr; '
      "<b>~320</b> g</div>",
      '<div><span class="k">filament  </span><b>412</b> cm&sup3; &rarr; '
@@ -87,6 +85,9 @@ def main():
         for old, new in swaps:
             assert old in page, f"shell drifted; swap not found: {old[:40]}"
             page = page.replace(old, new)
+        w, d, h = json.loads(data)["size"]
+        page = page.replace("__ENV__", f"{w:.0f} &times; {d:.0f} &times; {h:.0f}")
+        assert "__ENV__" not in page
         page = page.replace("__DATA__", data)
 
         # Two builds off one shell. The artifact host wraps the file in its
