@@ -177,6 +177,25 @@ The printed clips are usable: cut the 1 mm bridge between each release tab and t
 knife, then run the `fit03.html` test. Designed latch force is about 4 N for 1.7 mm of travel (14 mm
 free length, 1.6 thick, ~2% strain), so a freed latch should feel light.
 
+## 2026-10-17 (night): crown v2, the whole bench as one project, public repo, How I made this
+
+- Crown v2 (user: "make sure it's all nice and solid / but still adheres to our design language"): the socket and
+  tongue TAPER 1.0 per side over 14 mm (4.1 deg, self-locking; each 0.1 a print runs fat seats it 1.4 higher), so
+  the crown wedges tight under its own weight; ring and stem 5.0 thick (tongue still 3.7), stem flares 28 -> 48
+  wide into the ring with r 8 blends, 0.8 front chamfers, pads 7 dia on 45 deg feet, lip columns rounded. 10c is
+  now 44 min / 30 g. screws.py checks the taper.
+- `project_whole_bench.3mf`: 06x, 07, 08, 09, 10b (10p + 09c's rail bin), 10d, 10c, 11t on eight plates, 19 h 18,
+  420 g. A plate's preset and process ride on its objects (OBJECT_KEYS: layer height, ironing, seam, speeds);
+  accelerations and travel speed are project-wide and are reported as dropped. Pauses go per plate
+  (MultiAsSingle). 18 TPU feet: plate 07f, own file (a third filament needs one GUI save first). Opened in the GUI:
+  eight named plates, no error.
+- TEMPLATE_2F moved to `ref/templates/h2s_petg_hf_pla_basic.3mf`, a copy of the user's 09 save with the
+  DesignerUserId blanked, so it can be public.
+- Public repo: https://github.com/InMyPajamas/breadboard-bench (cad, checklist, out/plates, out/step, docs,
+  ref/templates; renders, other out/ and vendor STEPs ignored; ref/README.md says where to get them).
+- Hub: new tab "How I made this" (#made). `publish_site.py` now skips renders/*_frames (4 GB of film frames).
+  Published to redding.digital (www), project entry links the repo.
+
 ## 2026-10-17 (evening): mic crown (plate 10c) and the first multi-plate Studio project
 
 User: "bring up the case for the screen. I have not printed the thicker one yet", "also add the part that will
