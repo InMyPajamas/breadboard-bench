@@ -1436,7 +1436,14 @@ python cad/build_viewer.py # the 3D viewer tab</pre>
   }
   burger.addEventListener("click", () => setOpen(navEl.dataset.open !== "true"));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+  // A hash that names no panel (an old link, #storyboard, a cached copy of
+  // the page from before a tab existed) used to hide every panel and leave a
+  // blank page under the menu (user's phone, 2026-10-17). Unknown ids now fall
+  // back to the overview.
+  const ALIAS = { storyboard: "story", "how-i-made-this": "made", howimadethis: "made" };
   function activate(id, push) {
+    id = ALIAS[id] || id;
+    if (![...panels].some(p => p.id === id)) id = "overview";
     tabs.forEach(b => b.setAttribute("aria-selected", b.dataset.tab === id));
     const cur = [...tabs].find(b => b.dataset.tab === id);
     if (cur) burgerCur.textContent = cur.textContent;
